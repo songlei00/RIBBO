@@ -4,7 +4,9 @@ try:
 except:
     import json
 
-from data_augment.metrics import (
+import torch
+
+from datasets.metrics import (
     metric_best_y,
     metric_regret,
     metric_diversity_X,
@@ -15,8 +17,8 @@ from data_augment.metrics import (
 class Trajectory:
     def __init__(self, metadata, X, y):
         self.metadata: dict = metadata
-        self.X = X 
-        self.y = y 
+        self.X = torch.as_tensor(X)
+        self.y = torch.as_tensor(y)
 
     def __len__(self):
         return len(self.X)
@@ -33,10 +35,6 @@ class Trajectory:
     @property
     def best_y(self):
         return metric_best_y(self)
-
-    @property
-    def regret(self):
-        return metric_regret(self)
 
     @property
     def diversity_X(self):

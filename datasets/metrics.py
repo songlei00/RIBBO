@@ -4,15 +4,12 @@ import torch
 
 def metric_best_y(trajectory):
     metadata, X, y = trajectory.metadata, trajectory.X, trajectory.y
-    return np.max(y)
+    return torch.max(y)
 
 
-def metric_regret(trajectory, best_y=None):
+def metric_regret(trajectory, best_y):
     metadata, X, y = trajectory.metadata, trajectory.X, trajectory.y
-    if best_y is None:
-        best_y = metric_best_y(trajectory)
-
-    regret = np.linalg.norm(best_y - np.asarray(y), ord=1)
+    regret = torch.norm(best_y - y, p=1)
     return regret
 
 
