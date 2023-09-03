@@ -7,6 +7,9 @@ import multiprocessing as mp
 
 import numpy as np
 
+os.environ['XLA_FLAGS'] = ('--xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1')
+os.environ['JAX_PLATFORM_NAME'] = 'cpu'
+
 
 SMOKE_TEST = False
 designers = [
@@ -37,6 +40,11 @@ def get_cmd(designer, search_space_id, dataset_id, out_name, length, seed):
 
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--seed', type=int, required=True)
+    args = parser.parse_args()
+
     mode = ['train', 'test', 'validation']
     with open('others/hpob-summary-stats/{}-summary-stats.json'.format(mode[0]), 'rb') as f:
         summary_stats = json.load(f)
@@ -63,13 +71,15 @@ if __name__ == '__main__':
             ))
     else:
         # num_studies = 1e7
-        num_studies = 1e7
+        num_studies = 0
 
         cnt = 0
-        seed = 1
+        seed = args.seed
         failed_cmds = []
         while True:
-            os.mkdir('datasets/hpob_data/seed{}'.format(seed))
+            dir_path = 'datasets/hpob_data/seed{}'.format(seed)
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
 
             all_out_names = []
             for designer in designers:
