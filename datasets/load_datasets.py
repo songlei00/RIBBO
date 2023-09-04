@@ -1,8 +1,12 @@
 import os
 from collections import defaultdict
+import pickle
+import logging
 
 from datasets.datasets import TrajectoryDataset
 from datasets.trajectory import Trajectory
+
+logger = logging.getLogger(__name__)
 
 
 designers = [
@@ -80,7 +84,23 @@ def load_hpob_dataset(search_space_id: str):
         search_space_id = file_name.split('_')[1]
         return search_space_id
 
-    base_dir = './datasets/hpob_data'
-    sp2t = load_dataset(base_dir, filter_fn, split_fn) # searchspace2trajectory
+    cache_dir = './cache/hpob/'
+    cache_file_name = search_space_id + '.pkl'
+    cache_path = os.path.join(cache_dir, cache_file_name)
+    if not os.path.exists(cache_path):
+        base_dir = './datasets/hpob_data'
+        sp2t = load_dataset(base_dir, filter_fn, split_fn) # searchspace2trajectory
+        dataset = TrajectoryDataset(sp2t[search_space_id])
+        
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir)
 
-    return TrajectoryDataset(sp2t[search_space_id])
+        with open(cache_path, 'wb') as f:
+            pickle.dump(dataset, f)
+        logger.info('Save dataset cache to {}'.format(cache_path))
+    else:
+        with open(cache_path, 'rb') as f:
+            dataset = pickle.load(f)
+        logger.info('Load data set from {}'.format(cache_path))
+
+    return dataset

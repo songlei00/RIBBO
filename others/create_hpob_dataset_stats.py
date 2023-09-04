@@ -6,7 +6,7 @@ except:
 
 
 if os.getenv('HPOB_ROOT_DIR') is None:
-    os.environ['HPOB_ROOT_DIR'] = os.path.expanduser('~/dataset/hpob')
+    os.environ['HPOB_ROOT_DIR'] = os.path.expanduser('./data/downloaded_data/hpob')
 
 path = os.path.join(os.environ['HPOB_ROOT_DIR'], 'hpob-data')
 
