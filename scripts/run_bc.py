@@ -9,26 +9,36 @@ from UtilsRL.logger import CompositeLogger
 from algorithms.designers.bc import BCTransformerDesigner
 from algorithms.modules.dt import DecisionTransformer
 from datasets.load_datasets import load_hpob_dataset
-from problems.hpob_problem import HPOBProblem
+from problems.hpob_problem import HPOBMetaProblem
 
-args = parse_args()
+def post_init(args):
+    args.train_datasets = args.train_datasets[args.id][:5]
+    args.test_datasets = args.test_datasets[args.id][:5]
+    args.x_dim = args.x_dim[args.id]
+    args.y_dim = args.y_dim[args.id]
+    args.seq_len = args.seq_len[args.id]
+
+args = parse_args(post_init=post_init)
 exp_name = "-".join([args.id, "seed"+str(args.seed)])
 logger = CompositeLogger(log_dir=f"./log/{args.name}", name=exp_name, logger_config={
     "TensorboardLogger": {}
 }, activate=not args.debug)
+logger.log_config(args)
 setup(args, logger)
 
 # define the problem and the dataset
 dataset = load_hpob_dataset(args.id)
-problem = HPOBProblem()
-x_dim, seq_len, y_dim = problem.dim, problem.seq_len, 1
+problem = HPOBMetaProblem(
+    search_space_id=args.id, 
+    root_dir=args.hpob_root_dir, 
+)
 
 transformer = DecisionTransformer(
-    x_dim=x_dim, 
-    y_dim=y_dim, 
+    x_dim=args.x_dim, 
+    y_dim=args.y_dim, 
     embed_dim=args.embed_dim, 
     num_layers=args.num_layers, 
-    seq_len=seq_len, 
+    seq_len=args.seq_len, 
     num_heads=args.num_heads, 
     attention_dropout=args.attention_dropout, 
     residual_dropout=args.residual_dropout, 
@@ -38,14 +48,14 @@ transformer = DecisionTransformer(
 
 designer = BCTransformerDesigner(
     transformer=transformer, 
-    x_dim=x_dim, 
-    y_dim=y_dim, 
+    x_dim=args.x_dim, 
+    y_dim=args.y_dim, 
     embed_dim=args.embed_dim, 
-    seq_len=seq_len, 
+    seq_len=args.seq_len, 
     x_type=args.x_type, 
     y_loss_coeff=args.y_loss_coeff, 
     device=args.device
-).to(args.device)
+)
 
 designer.configure_optimizers(
     **args.optimizer_args

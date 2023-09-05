@@ -1,3 +1,4 @@
+from typing import Union
 import os
 try:
     import ujson as json
@@ -63,3 +64,38 @@ class HPOBProblem(ProblemBase):
 
     def info(self):
         return self.summary_stats[self.surrogate_name]
+
+
+class HPOBMetaProblem():
+    def __init__(
+        self, 
+        search_space_id: str, 
+        root_dir: str, 
+    ):
+        assert search_space_id.isnumeric()
+        self.root_dir = root_dir
+        self.search_space_id = search_space_id
+
+        self.summary_stats = load_summary(root_dir)
+        self.bst_surrogate = xgb.Booster()
+        self.name = 'HPOB_{}'.format(search_space_id)
+    
+    def reset_task(self, dataset_id: str):
+        self.surrogate_name = 'surrogate-'+self.search_space_id+'-'+dataset_id
+        self.bst_surrogate.load_model(os.path.join(
+            self.root_dir, 
+            'saved-surrogates', 
+            self.surrogate_name+'.json'
+        ))
+
+    def forward(self, X: torch.Tensor):
+        assert X.ndim == 2
+        device = X.device
+        X_np = X.cpu().detach().numpy()
+        X_np = xgb.DMatrix(X_np)
+        Y = self.bst_surrogate.predict(X_np)
+        return torch.from_numpy(Y).reshape(-1, 1).to(device)
+    
+    def evaluate(self, designer, task_set):
+        return {}
+        

@@ -6,6 +6,9 @@ name = "bc"
 
 id = "4796"
 
+x_type = "deterministic"
+y_loss_coeff = 0.0
+
 embed_dim = 256
 num_layers = 4
 num_heads = 4
@@ -21,6 +24,8 @@ num_epoch = 100
 eval_interval = 1
 log_interval = 1
 
+hpob_root_dir="./hpob"
+
 class optimizer_args(NameSpace):
     lr = 1e-4
     weight_decay = 1e-4
@@ -30,3 +35,11 @@ class optimizer_args(NameSpace):
 class wandb(NameSpace):
     entity = None
     project = None
+
+from scripts.configs.dataset_specs import (
+    train_datasets, 
+    test_datasets, 
+    x_dim, 
+    y_dim, 
+    seq_len
+)
