@@ -1,7 +1,8 @@
 #!/bin/bash
 
-max_proc=15
-max_seed=49
+max_proc=10
+min_seed=0
+max_seed=19
 fifo_name="/tmp/$$.fifo"
 mkfifo $fifo_name
 exec 7<>${fifo_name}
@@ -12,7 +13,7 @@ do
     echo
 done >&7
 
-for ((seed=20; seed<=${max_seed}; seed++))
+for ((seed=${min_seed}; seed<=${max_seed}; seed++))
 do
     read -u7
     {

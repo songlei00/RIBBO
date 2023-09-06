@@ -31,7 +31,7 @@ def get_cmd(designer, search_space_id, dataset_id, out_name, length, seed):
         --designer={} \
         --search_space_id={} \
         --dataset_id={} \
-        --root_dir=~/dataset/hpob \
+        --root_dir=./data/downloaded_data/hpob \
         --out_name={} \
         --length={} \
         --seed={}'.format(designer, search_space_id, dataset_id, out_name, length, seed)
@@ -65,63 +65,42 @@ if __name__ == '__main__':
                 designer, 
                 search_space_id, 
                 dataset_id, 
-                'datasets/hpob_data/smoke_test_{}.json'.format(designer), 
+                'data/generated_data/smoke_test_{}.json'.format(designer), 
                 100,
-                seed=0,
+                seed=args.seed,
             ))
     else:
-        # num_studies = 1e7
-        num_studies = 0
-
-        cnt = 0
         seed = args.seed
         failed_cmds = []
-        while True:
-            dir_path = 'datasets/hpob_data/seed{}'.format(seed)
-            if not os.path.exists(dir_path):
-                os.mkdir(dir_path)
 
-            all_out_names = []
-            for designer in designers:
-                # print(designer, seed)
-                for search_space_id in summary_stats:
-                    for dataset_id in summary_stats[search_space_id]:
-                        print(designer, search_space_id, dataset_id, seed)
-                        out_name = 'datasets/hpob_data/seed{}/{}_{}_{}_{}.json'.format(seed, designer, search_space_id, dataset_id, seed)
-                        cmd = get_cmd(
-                            designer,
-                            search_space_id, 
-                            dataset_id,
-                            out_name,
-                            300,
-                            seed=seed,
-                        )
-                        ret = os.system(cmd)
-                        if ret != 0:
-                            failed_cmds.append(cmd)
+        dir_path = 'data/generated_data/hpob/seed{}'.format(seed)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
 
-                            print('----------------------------')
-                            print('Error: {}'.format(cmd))
-                            print('----------------------------')
+        all_out_names = []
+        for designer in designers:
+            # print(designer, seed)
+            for search_space_id in summary_stats:
+                for dataset_id in summary_stats[search_space_id]:
+                    print(designer, search_space_id, dataset_id, seed)
+                    out_name = dir_path + '/{}_{}_{}_{}.json'.format(designer, search_space_id, dataset_id, seed)
+                    cmd = get_cmd(
+                        designer,
+                        search_space_id, 
+                        dataset_id,
+                        out_name,
+                        300,
+                        seed=seed,
+                    )
+                    ret = os.system(cmd)
+                    if ret != 0:
+                        failed_cmds.append(cmd)
 
-                        all_out_names.append(out_name)
-                        cnt += 1
+                        print('----------------------------')
+                        print('Error: {}'.format(cmd))
+                        print('----------------------------')
 
-            # merge json file
-            # merged_data = {}
-            # for out_name in all_out_names:
-            #     with open(out_name, 'rb') as f:
-            #         data = json.load(f)
-            #     key = os.path.basename(out_name).rstrip('.json')
-            #     merged_data[key] = data
-            #     os.system('rm {}'.format(out_name))
-            
-            # with open('datasets/hpob_data/seed_{}.json'.format(seed), 'w') as f:
-            #     json.dump(merged_data, f)
-
-            seed += 1
-            if cnt >= num_studies:
-                break
+                    all_out_names.append(out_name)
 
         print('----------------------------')
         print(failed_cmds)

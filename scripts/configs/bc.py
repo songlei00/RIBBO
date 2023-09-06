@@ -1,6 +1,6 @@
 from UtilsRL.misc.namespace import NameSpace
 
-seed = 42
+seed = 0
 debug = False
 name = "bc"
 
@@ -16,6 +16,7 @@ attention_dropout = 0.1
 residual_dropout = 0.1
 embed_dropout = 0.1
 pos_encoding = "embed"
+clip_grad = None
 
 batch_size = 64
 num_workers = 4
@@ -24,7 +25,7 @@ num_epoch = 100
 eval_interval = 1
 log_interval = 1
 
-hpob_root_dir="./hpob"
+hpob_root_dir="./data/downloaded_data/hpob/"
 
 class optimizer_args(NameSpace):
     lr = 1e-4
