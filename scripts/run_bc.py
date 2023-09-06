@@ -32,6 +32,7 @@ problem = HPOBMetaProblem(
     root_dir=args.hpob_root_dir, 
 )
 dataset = problem.get_dataset()
+logger.info(problem.id2info)
 
 transformer = BCTransformer(
     x_dim=problem.x_dim, 

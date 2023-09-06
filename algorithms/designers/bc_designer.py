@@ -171,16 +171,22 @@ def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, d
             this_y[i] = last_y.detach().cpu().numpy()
         all_id_y[id] = this_y
         
-    # best y: max over sequence, average over eval num
     metrics = {}
+    
+    # best y: max over sequence, average over eval num
     best_y_sum = 0
     for id in all_id_y:
-        best_y_this = all_id_y[id].max(axis=1).mean()
+        best_y_this = all_id_y[id].max(axis=0).mean()
         metrics["best_y_"+id] = best_y_this
         best_y_sum += best_y_this
     metrics["best_y_agg"] = best_y_sum / len(all_id_y)
 
-    # TODO add regret
-    # TODO add plot
+    # regret: (best_y - y), sum over sequence, average over eval num
+    regret_sum = 0
+    for id in all_id_y:
+        regret_this = (problem.best_y - all_id_y[id]).sum(axis=0).mean()
+        metrics["regret_"+id] = regret_this
+        regret_sum += regret_this
+    metrics["regret_agg"] = regret_sum / len(all_id_y)
     
     return metrics

@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 import os
 try:
     import ujson as json
@@ -82,19 +82,42 @@ class HPOBMetaProblem():
         self.dataset = load_hpob_dataset(
             search_space_id=search_space_id
         )
-        self.sample_data = self.dataset.trajectory_list[0]
-        self.seq_len = self.sample_data.X.shape[0]
-        self.x_dim = self.sample_data.X.shape[1]
+        self.get_datasets_info()
+        
+    def get_datasets_info(self):
+        sample_data = self.dataset.trajectory_list[0]
+        self.best_y = max([
+            t.y.max() for t in self.dataset.trajectory_list
+        ]).item()
+        self.seq_len = sample_data.X.shape[0]
+        self.x_dim = sample_data.X.shape[1]
         self.y_dim = 1
-
+        
+        id2info = {}
+        for t in self.dataset.trajectory_list:
+            id = t.metadata["dataset_id"]
+            best_y = t.y.max().item()
+            regret = (self.best_y - t.y).sum().item()
+            if id not in id2info:
+                id2info[id] = {"best_y": [], "regret": []}
+            id2info[id]["best_y"].append(best_y)
+            id2info[id]["regret"].append(regret)
+        for id, d_ in id2info.items():
+            id2info[id] = {
+                "best_y": sum(d_["best_y"])/len(d_["best_y"]), 
+                "regret": sum(d_["regret"])/len(d_["regret"])
+            }
+        self.id2info = id2info
+    
     def reset_task(self, dataset_id: str):
+        self.dataset_id = dataset_id
         self.surrogate_name = 'surrogate-'+self.search_space_id+'-'+dataset_id
         self.bst_surrogate.load_model(os.path.join(
             self.root_dir, 
             'saved-surrogates', 
             self.surrogate_name+'.json'
         ))
-
+        
     def forward(self, X: torch.Tensor):
         assert X.ndim == 2
         device = X.device
