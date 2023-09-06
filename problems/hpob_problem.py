@@ -40,7 +40,7 @@ class HPOBProblem(ProblemBase):
         self.bst_surrogate = xgb.Booster()
         self.bst_surrogate.load_model(os.path.join(root_dir, 'saved-surrogates', self.surrogate_name+'.json'))
 
-        self.dim = len(self.bst_surrogate.get_score(importance_type='gain'))
+        self.dim = self.bst_surrogate.num_features()
         self.lb = torch.zeros(self.dim)
         self.ub = torch.ones(self.dim)
         self.name = 'HPOB_{}'.format(search_space_id)

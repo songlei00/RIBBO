@@ -88,7 +88,7 @@ def load_hpob_dataset(search_space_id: str):
     cache_file_name = search_space_id + '.pkl'
     cache_path = os.path.join(cache_dir, cache_file_name)
     if not os.path.exists(cache_path):
-        base_dir = './datasets/hpob_data'
+        base_dir = './data/generated_data/hpob'
         sp2t = load_dataset(base_dir, filter_fn, split_fn) # searchspace2trajectory
         dataset = TrajectoryDataset(sp2t[search_space_id])
         
