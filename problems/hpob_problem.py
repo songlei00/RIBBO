@@ -11,6 +11,7 @@ import torch
 from torch import Tensor
 
 from problems.base import ProblemBase
+from datasets.load_datasets import load_hpob_dataset
 
 
 def load_summary(root_dir):
@@ -76,10 +77,16 @@ class HPOBMetaProblem():
         self.root_dir = root_dir
         self.search_space_id = search_space_id
 
-        self.summary_stats = load_summary(root_dir)
         self.bst_surrogate = xgb.Booster()
         self.name = 'HPOB_{}'.format(search_space_id)
-    
+        self.dataset = load_hpob_dataset(
+            search_space_id=search_space_id
+        )
+        self.sample_data = self.dataset.trajectory_list[0]
+        self.seq_len = self.sample_data.X.shape[0]
+        self.x_dim = self.sample_data.X.shape[1]
+        self.y_dim = 1
+
     def reset_task(self, dataset_id: str):
         self.surrogate_name = 'surrogate-'+self.search_space_id+'-'+dataset_id
         self.bst_surrogate.load_model(os.path.join(
@@ -96,6 +103,5 @@ class HPOBMetaProblem():
         Y = self.bst_surrogate.predict(X_np)
         return torch.from_numpy(Y).reshape(-1, 1).to(device)
     
-    def evaluate(self, designer, task_set):
-        return {}
-        
+    def get_dataset(self):
+        return self.dataset

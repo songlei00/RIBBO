@@ -19,7 +19,14 @@ class TrajectoryDataset(Dataset):
 
     def __getitem__(self, idx):
         trajectory = self.trajectory_list[idx]
-        return trajectory.X, trajectory.y, metric_regret(trajectory, self.best_y)
+        timesteps = torch.arange(0, trajectory.X.shape[0]).long()
+        return {
+            "x": trajectory.X, 
+            "y": trajectory.y.unsqueeze(-1), 
+            "timesteps": timesteps, 
+            "masks": torch.ones_like(timesteps).float()
+        }
+        # return trajectory.X, trajectory.y, metric_regret(trajectory, self.best_y)
 
     def __len__(self):
         return len(self.trajectory_list)

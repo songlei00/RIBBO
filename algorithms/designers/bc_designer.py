@@ -69,46 +69,49 @@ class BCTransformerDesigner(BaseDesigner):
         self.optim_scheduler = torch.optim.lr_scheduler.LambdaLR(self.optim, lambda step: min((step+1)/warmup_steps, 1))
         
     @torch.no_grad()
-    def reset(self):
-        self.past_x = torch.zeros([1, self.seq_len, self.x_dim], dtype=torch.float).to(self.device)
-        self.past_y = torch.zeros([1, self.seq_len, 1], dtype=torch.float).to(self.device)
-        self.past_regrets_to_go = torch.zeros_like([1, self.seq_len, 1], dtype=torch.float).to(self.device)
+    def reset(self, eval_num=1):
+        self.past_x = torch.zeros([eval_num, self.seq_len, self.x_dim], dtype=torch.float).to(self.device)
+        self.past_y = torch.zeros([eval_num, self.seq_len, 1], dtype=torch.float).to(self.device)
         self.timesteps = torch.arange(self.seq_len).long().to(self.device).reshape(1, self.seq_len)
         self.step_count = 0
         torch.cuda.empty_cache()
         
     @torch.no_grad()
-    def suggest(self, last_x, last_y, determinisitc=False):
-        last_x = torch.from_numpy(last_x).float().to(self.device)
-        last_y = torch.from_numpy(last_y).float().to(self.device)
-        self.past_x[:, self.step_count] = last_x
-        self.past_y[:, self.step_count] = last_y
-        self.step_count += 1
+    def suggest(
+        self, 
+        last_x=None, 
+        last_y=None, 
+        determinisitc=False, 
+        *args, **kwargs
+    ):
+        if last_x is not None and last_y is not None:
+            last_x = torch.as_tensor(last_x).float().to(self.device)
+            last_y = torch.as_tensor(last_y).float().to(self.device)
+            self.past_x[:, self.step_count] = last_x
+            self.past_y[:, self.step_count] = last_y
+            self.step_count += 1
         
         out = self.transformer(
             x=self.past_x[:, :self.step_count], 
             y=self.past_y[:, :self.step_count], 
-            regrets_to_go = self.past_regrets_to_go[:, :self.step_count], 
             timesteps=self.timesteps[:, :self.step_count], 
             attention_mask=None, 
             key_padding_mask=None # during testing all positions are valid
         )
-        suggest_x = self.x_head.sample(out[:, 0::3], deterministic=determinisitc)[0]
-        return suggest_x[0, self.step_count-1].cpu().numpy()
+        suggest_x = self.x_head.sample(out[:, 0::2], deterministic=determinisitc)[0]
+        return suggest_x[:, self.step_count]
     
     def update(self, batch: Dict[str, Any], clip_grad: Optional[float]=None):
         x, y, timesteps, masks = [
-            torch.from_numpy(v).float().to(self.device) 
+            torch.as_tensor(v).to(self.device) 
             for v in itemgetter("x", "y", "timesteps", "masks")(batch)
         ]
         B, L, X = x.shape
         
-        regrets_to_go = torch.zeros(B, L, 1).float().to(self.device)
         key_padding_mask = ~masks.to(torch.bool)
         out = self.transformer(
             x=x, 
             y=y, 
-            regrets_to_go=regrets_to_go, 
             timesteps=timesteps, 
             attention_mask=None, 
             key_padding_mask=key_padding_mask
@@ -116,19 +119,19 @@ class BCTransformerDesigner(BaseDesigner):
         # x reconstruction
         if isinstance(self.x_head, SquashedDeterministicActor):
             x_loss = torch.nn.functional.mse_loss(
-                self.x_head.sample(out[:, 0::3])[0], 
+                self.x_head.sample(out[:, 0:-1:2])[0], 
                 x.detach(), 
                 reduction="none"
             )
         elif isinstance(self.x_head, SquashedGaussianActor):
             x_loss = self.x_head.evaluate(
-                out[:, 0::3], 
+                out[:, 0:-1:2], 
                 x.detach(), 
             )[0]
         tot_loss = x_loss = (x_loss * masks.unsqueeze(-1)).mean()
         if self.y_loss_coeff:
             y_loss = torch.nn.functional.mse_loss(
-                self.y_head.sample(out[:, 1::3])[0], 
+                self.y_head.sample(out[:, 1::2])[0], 
                 y.detach(), 
                 reduction="none"
             )
@@ -149,4 +152,35 @@ class BCTransformerDesigner(BaseDesigner):
             "misc/learning_rate": self.optim_scheduler.get_last_lr()[0]
         }
         
+
+def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, datasets, eval_episode):
+    print(f"evaluating on {datasets} ...")
+    all_id_y = {}
+    for id in datasets:
+        problem.reset_task(id)
+        designer.reset(eval_episode)
+        last_x, last_y = None, None
+        this_y = np.zeros([problem.seq_len, eval_episode, 1])
+        for i in range(problem.seq_len):
+            last_x = designer.suggest(
+                last_x=last_x, 
+                last_y=last_y, 
+                determinisitc=True
+            )
+            last_y = problem.forward(last_x)
+            this_y[i] = last_y.detach().cpu().numpy()
+        all_id_y[id] = this_y
         
+    # best y: max over sequence, average over eval num
+    metrics = {}
+    best_y_sum = 0
+    for id in all_id_y:
+        best_y_this = all_id_y[id].max(axis=1).mean()
+        metrics["best_y_"+id] = best_y_this
+        best_y_sum += best_y_this
+    metrics["best_y_agg"] = best_y_sum / len(all_id_y)
+
+    # TODO add regret
+    # TODO add plot
+    
+    return metrics

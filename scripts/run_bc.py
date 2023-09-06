@@ -6,8 +6,8 @@ from tqdm import trange
 from torch.utils.data import DataLoader
 from UtilsRL.exp import parse_args, setup
 from UtilsRL.logger import CompositeLogger
-from algorithms.designers.bc import BCTransformerDesigner
-from algorithms.modules.dt import DecisionTransformer
+from algorithms.designers.bc_designer import BCTransformerDesigner, evaluate_bc_transformer_designer
+from algorithms.modules.bc import BCTransformer
 from datasets.load_datasets import load_hpob_dataset
 from problems.hpob_problem import HPOBMetaProblem
 
@@ -27,19 +27,20 @@ logger.log_config(args)
 setup(args, logger)
 
 # define the problem and the dataset
-dataset = load_hpob_dataset(args.id)
 problem = HPOBMetaProblem(
     search_space_id=args.id, 
     root_dir=args.hpob_root_dir, 
 )
+dataset = problem.get_dataset()
 
-transformer = DecisionTransformer(
-    x_dim=args.x_dim, 
-    y_dim=args.y_dim, 
+transformer = BCTransformer(
+    x_dim=problem.x_dim, 
+    y_dim=problem.y_dim, 
     embed_dim=args.embed_dim, 
     num_layers=args.num_layers, 
-    seq_len=args.seq_len, 
+    seq_len=problem.seq_len, 
     num_heads=args.num_heads, 
+    add_bos=True, 
     attention_dropout=args.attention_dropout, 
     residual_dropout=args.residual_dropout, 
     embed_dropout=args.embed_dropout, 
@@ -48,10 +49,10 @@ transformer = DecisionTransformer(
 
 designer = BCTransformerDesigner(
     transformer=transformer, 
-    x_dim=args.x_dim, 
-    y_dim=args.y_dim, 
+    x_dim=problem.x_dim, 
+    y_dim=problem.y_dim, 
     embed_dim=args.embed_dim, 
-    seq_len=args.seq_len, 
+    seq_len=problem.seq_len, 
     x_type=args.x_type, 
     y_loss_coeff=args.y_loss_coeff, 
     device=args.device
@@ -75,9 +76,11 @@ for i_epoch in trange(args.num_epoch):
         train_metrics = designer.update(batch, clip_grad=args.clip_grad)
     
     if i_epoch % args.eval_interval == 0:
-        eval_metrics = problem.evaluate(designer)
-        logger.info(f"Epoch {i_epoch}: \n{eval_metrics}")
-        logger.log_scalars("eval", eval_metrics, step=i_epoch)
+        eval_test_metrics = evaluate_bc_transformer_designer(problem, designer, args.test_datasets, args.eval_episodes)
+        eval_train_metrics = evaluate_bc_transformer_designer(problem, designer, args.train_datasets, args.eval_episodes)
+        logger.info(f"Epoch {i_epoch}: \n{eval_train_metrics}\n{eval_test_metrics}")
+        logger.log_scalars("eval_trainset", eval_train_metrics, step=i_epoch)
+        logger.log_scalars("eval_testset", eval_test_metrics, step=i_epoch)
     
     if i_epoch % args.log_interval == 0:
         logger.log_scalars("", train_metrics, step=i_epoch)

@@ -21,11 +21,12 @@ clip_grad = None
 batch_size = 64
 num_workers = 4
 
-num_epoch = 100
-eval_interval = 1
+num_epoch = 1000
+eval_interval = 10
 log_interval = 1
+eval_episodes = 5
 
-hpob_root_dir="./data/downloaded_data/hpob/"
+hpob_root_dir="./hpob/"
 
 class optimizer_args(NameSpace):
     lr = 1e-4

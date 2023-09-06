@@ -5,8 +5,9 @@ import torch.nn as nn
 
 from offlinerllib.module.net.attention.gpt2 import GPT2
 from offlinerllib.module.net.attention.positional_encoding import get_pos_encoding
+from offlinerllib.module.net.attention.base import NoDecayParameter
 
-class DecisionTransformer(GPT2):
+class BCTransformer(GPT2):
     def __init__(
         self, 
         x_dim: int, 
@@ -15,6 +16,7 @@ class DecisionTransformer(GPT2):
         num_layers: int, 
         seq_len: int, 
         num_heads: int=1, 
+        add_bos: bool=True, 
         attention_dropout: Optional[float]=0.1, 
         residual_dropout: Optional[float]=0.1, 
         embed_dropout: Optional[float]=0.1, 
@@ -33,17 +35,19 @@ class DecisionTransformer(GPT2):
             seq_len=0
         )
         # we manually do the positional encoding here
+        self.embed_dim = embed_dim
+        self.add_bos = add_bos
+        if self.add_bos:
+            self.bos_embed = NoDecayParameter(torch.zeros([1, embed_dim]).float(), requires_grad=True)
         self.pos_encoding = get_pos_encoding(pos_encoding, embed_dim, seq_len)
         self.x_embed = nn.Linear(x_dim, embed_dim)
         self.y_embed = nn.Linear(y_dim, embed_dim)
-        self.regret_embed = nn.Linear(1, embed_dim)
         self.embed_ln = nn.LayerNorm(embed_dim)
         
     def forward(
         self, 
         x: torch.Tensor, 
         y: torch.Tensor, 
-        regrets_to_go: Optional[torch.Tensor]=None, 
         timesteps: Optional[torch.Tensor]=None, 
         attention_mask: Optional[torch.Tensor]=None, 
         key_padding_mask: Optional[torch.Tensor]=None, 
@@ -51,12 +55,20 @@ class DecisionTransformer(GPT2):
         B, L, X = x.shape
         x_embedding = self.pos_encoding(self.x_embed(x), timesteps)
         y_embedding = self.pos_encoding(self.y_embed(y), timesteps)
-        regret_embedding = self.pos_encoding(self.regret_embed(regrets_to_go), timesteps)
         
         if key_padding_mask is not None:
-            key_padding_mask = torch.stack([key_padding_mask, key_padding_mask, key_padding_mask], dim=2).reshape(B, 3*L)
-        
-        stacked_input = torch.stack([regret_embedding, x_embedding, y_embedding], dim=2).reshape(B, 3*L, -1)
+            key_padding_mask = torch.stack([key_padding_mask, key_padding_mask], dim=2).reshape(B, 2*L)
+        stacked_input = torch.stack([x_embedding, y_embedding], dim=2).reshape(B, 2*L, self.embed_dim)
+        if self.add_bos:
+            if key_padding_mask is not None:
+                key_padding_mask = torch.concat([
+                    torch.ones([B, 1]).to(stacked_input.device), 
+                    key_padding_mask
+                ], dim=1)
+            stacked_input = torch.concat([
+                self.bos_embed.repeat(B, 1, 1), 
+                stacked_input
+            ], dim=1)
         stacked_input = self.embed_ln(stacked_input)
         out = super().forward(
             inputs=stacked_input, 
