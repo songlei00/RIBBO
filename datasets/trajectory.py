@@ -24,7 +24,7 @@ class Trajectory:
         return len(self.X)
 
     def __str__(self):
-        return str(self.metadata)
+        return 'Trajectory class. Metadata: ' + str(self.metadata)
 
     @classmethod
     def load_from_json(cls, path):
