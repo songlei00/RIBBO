@@ -33,6 +33,7 @@ class DecisionTransformer(GPT2):
             seq_len=0
         )
         # we manually do the positional encoding here
+        self.embed_dim = embed_dim
         self.pos_encoding = get_pos_encoding(pos_encoding, embed_dim, seq_len)
         self.x_embed = nn.Linear(x_dim, embed_dim)
         self.y_embed = nn.Linear(y_dim, embed_dim)
@@ -56,7 +57,7 @@ class DecisionTransformer(GPT2):
         if key_padding_mask is not None:
             key_padding_mask = torch.stack([key_padding_mask, key_padding_mask, key_padding_mask], dim=2).reshape(B, 3*L)
         
-        stacked_input = torch.stack([regret_embedding, x_embedding, y_embedding], dim=2).reshape(B, 3*L, -1)
+        stacked_input = torch.stack([regret_embedding, x_embedding, y_embedding], dim=2).reshape(B, 3*L, self.embed_dim)
         stacked_input = self.embed_ln(stacked_input)
         out = super().forward(
             inputs=stacked_input, 
