@@ -63,8 +63,11 @@ class BCTransformerDesigner(BaseDesigner):
         
     def configure_optimizers(self, lr, weight_decay, betas, warmup_steps):
         decay, no_decay = self.transformer.configure_params()
+        decay_parameters = [*decay, *self.x_head.parameters()]
+        if self.y_loss_coeff:
+            decay_parameters.extend([*self.y_head.parameters()])
         self.optim = torch.optim.AdamW([
-            {"params": [*decay, *self.x_head.parameters()], "weight_decay": weight_decay}, 
+            {"params": decay_parameters, "weight_decay": weight_decay}, 
             {"params":  no_decay, "weight_decay": 0.0}
         ], lr=lr, betas=betas)
         self.optim_scheduler = torch.optim.lr_scheduler.LambdaLR(self.optim, lambda step: min((step+1)/warmup_steps, 1))
