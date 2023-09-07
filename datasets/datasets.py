@@ -30,3 +30,7 @@ class TrajectoryDataset(Dataset):
 
     def __len__(self):
         return len(self.trajectory_list)
+
+    def transform_x(self, fn):
+        for i in range(len(self.trajectory_list)):
+            self.trajectory_list[i].X = fn(self.trajectory_list[i].X)

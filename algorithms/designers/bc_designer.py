@@ -9,7 +9,7 @@ from offlinerllib.module.net.attention.base import BaseTransformer
 from offlinerllib.module.actor import (
     SquashedDeterministicActor, 
     SquashedGaussianActor, 
-    CategoricalActor
+    DeterministicActor
 )
 from algorithms.designers.base import BaseDesigner
 
@@ -52,7 +52,8 @@ class BCTransformerDesigner(BaseDesigner):
         else:
             raise ValueError
         if y_loss_coeff:
-            self.y_head = SquashedDeterministicActor(
+            # this is because y is not scaled into any range
+            self.y_head = DeterministicActor(
                 backend=torch.nn.Identity(), 
                 input_dim=embed_dim, 
                 output_dim=y_dim
@@ -72,7 +73,7 @@ class BCTransformerDesigner(BaseDesigner):
     def reset(self, eval_num=1):
         self.past_x = torch.zeros([eval_num, self.seq_len, self.x_dim], dtype=torch.float).to(self.device)
         self.past_y = torch.zeros([eval_num, self.seq_len, 1], dtype=torch.float).to(self.device)
-        self.timesteps = torch.arange(self.seq_len).long().to(self.device).reshape(1, self.seq_len)
+        self.timesteps = torch.arange(self.seq_len).long().repeat(eval_num, 1).to(self.device)
         self.step_count = 0
         torch.cuda.empty_cache()
         

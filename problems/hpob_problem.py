@@ -1,4 +1,5 @@
 from typing import Union, Optional
+from functools import partial
 import os
 try:
     import ujson as json
@@ -84,6 +85,9 @@ class HPOBMetaProblem():
         )
         self.get_datasets_info()
         
+        # transform the dataset x
+        self.dataset.transform_x(partial(self.transform_x, reverse=True))
+        
     def get_datasets_info(self):
         sample_data = self.dataset.trajectory_list[0]
         self.best_y = max([
@@ -108,6 +112,15 @@ class HPOBMetaProblem():
                 "regret": sum(d_["regret"])/len(d_["regret"])
             }
         self.id2info = id2info
+        
+        self.x_low = 0.0
+        self.x_high = 1.0
+        
+    def transform_x(self, x, reverse: bool=False):
+        if reverse:
+            return x * 2 - 1.0
+        else:
+            return x / 2 + 0.5
     
     def reset_task(self, dataset_id: str):
         self.dataset_id = dataset_id
@@ -122,7 +135,7 @@ class HPOBMetaProblem():
         assert X.ndim == 2
         device = X.device
         X_np = X.cpu().detach().numpy()
-        X_np = xgb.DMatrix(X_np)
+        X_np = xgb.DMatrix(self.transform_x(X_np))
         Y = self.bst_surrogate.predict(X_np)
         return torch.from_numpy(Y).reshape(-1, 1).to(device)
     
