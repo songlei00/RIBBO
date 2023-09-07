@@ -26,7 +26,7 @@ eval_interval = 10
 log_interval = 1
 eval_episodes = 5
 
-hpob_root_dir="./hpob/"
+hpob_root_dir="./data/downloaded_data/hpob/"
 
 class optimizer_args(NameSpace):
     lr = 1e-4

@@ -11,7 +11,7 @@ os.environ['XLA_FLAGS'] = ('--xla_cpu_multi_thread_eigen=false intra_op_parallel
 os.environ['JAX_PLATFORM_NAME'] = 'cpu'
 
 
-SMOKE_TEST = False
+SMOKE_TEST = True
 designers = [
     'Random',
     # 'GridSearch',
