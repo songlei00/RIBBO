@@ -9,7 +9,7 @@ from offlinerllib.module.net.attention.base import BaseTransformer
 from offlinerllib.module.actor import (
     SquashedDeterministicActor, 
     SquashedGaussianActor, 
-    CategoricalActor
+    DeterministicActor
 )
 from algorithms.designers.base import BaseDesigner
 
@@ -52,7 +52,8 @@ class BCTransformerDesigner(BaseDesigner):
         else:
             raise ValueError
         if y_loss_coeff:
-            self.y_head = SquashedDeterministicActor(
+            # this is because y is not scaled into any range
+            self.y_head = DeterministicActor(
                 backend=torch.nn.Identity(), 
                 input_dim=embed_dim, 
                 output_dim=y_dim
@@ -62,8 +63,11 @@ class BCTransformerDesigner(BaseDesigner):
         
     def configure_optimizers(self, lr, weight_decay, betas, warmup_steps):
         decay, no_decay = self.transformer.configure_params()
+        decay_parameters = [*decay, *self.x_head.parameters()]
+        if self.y_loss_coeff:
+            decay_parameters.extend([*self.y_head.parameters()])
         self.optim = torch.optim.AdamW([
-            {"params": [*decay, *self.x_head.parameters()], "weight_decay": weight_decay}, 
+            {"params": decay_parameters, "weight_decay": weight_decay}, 
             {"params":  no_decay, "weight_decay": 0.0}
         ], lr=lr, betas=betas)
         self.optim_scheduler = torch.optim.lr_scheduler.LambdaLR(self.optim, lambda step: min((step+1)/warmup_steps, 1))
@@ -72,7 +76,7 @@ class BCTransformerDesigner(BaseDesigner):
     def reset(self, eval_num=1):
         self.past_x = torch.zeros([eval_num, self.seq_len, self.x_dim], dtype=torch.float).to(self.device)
         self.past_y = torch.zeros([eval_num, self.seq_len, 1], dtype=torch.float).to(self.device)
-        self.timesteps = torch.arange(self.seq_len).long().to(self.device).reshape(1, self.seq_len)
+        self.timesteps = torch.arange(self.seq_len).long().repeat(eval_num, 1).to(self.device)
         self.step_count = 0
         torch.cuda.empty_cache()
         
@@ -171,16 +175,22 @@ def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, d
             this_y[i] = last_y.detach().cpu().numpy()
         all_id_y[id] = this_y
         
-    # best y: max over sequence, average over eval num
     metrics = {}
+    
+    # best y: max over sequence, average over eval num
     best_y_sum = 0
     for id in all_id_y:
-        best_y_this = all_id_y[id].max(axis=1).mean()
+        best_y_this = all_id_y[id].max(axis=0).mean()
         metrics["best_y_"+id] = best_y_this
         best_y_sum += best_y_this
     metrics["best_y_agg"] = best_y_sum / len(all_id_y)
 
-    # TODO add regret
-    # TODO add plot
+    # regret: (best_y - y), sum over sequence, average over eval num
+    regret_sum = 0
+    for id in all_id_y:
+        regret_this = (problem.best_y - all_id_y[id]).sum(axis=0).mean()
+        metrics["regret_"+id] = regret_this
+        regret_sum += regret_this
+    metrics["regret_agg"] = regret_sum / len(all_id_y)
     
     return metrics
