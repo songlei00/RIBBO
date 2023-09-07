@@ -3,3 +3,5 @@
 *.json
 cache
 log
+plot/*
+!plot/*.py
