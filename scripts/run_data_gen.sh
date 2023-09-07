@@ -1,8 +1,8 @@
 #!/bin/bash
 
 max_proc=10
-min_seed=0
-max_seed=19
+min_seed=20
+max_seed=49
 fifo_name="/tmp/$$.fifo"
 mkfifo $fifo_name
 exec 7<>${fifo_name}
