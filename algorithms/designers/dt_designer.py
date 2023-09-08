@@ -75,9 +75,9 @@ class DecisionTransformerDesigner(BaseDesigner):
     def reset(self, eval_num=1, init_regret=0.0):
         self.past_x = torch.zeros([eval_num, self.seq_len+1, self.x_dim], dtype=torch.float).to(self.device)
         self.past_y = torch.zeros([eval_num, self.seq_len+1, 1], dtype=torch.float).to(self.device)
-        self.past_regrets = torch.zeros([eval_num, self.seq_len, 1], dtype=torch.float).to(self.device)
+        self.past_regrets = torch.zeros([eval_num, self.seq_len+1, 1], dtype=torch.float).to(self.device)
         self.past_regrets[:, 0] = init_regret
-        self.timesteps = torch.arange(self.seq_len+1).long().to(self.device).reshape(1, self.seq_len)
+        self.timesteps = torch.arange(self.seq_len+1).long().to(self.device).reshape(1, self.seq_len+1)
         self.step_count = 0
         torch.cuda.empty_cache()
         
@@ -92,8 +92,7 @@ class DecisionTransformerDesigner(BaseDesigner):
     ):
         if (
             last_x is not None and \
-            last_y is not None and \
-            last_regrets is not None
+            last_y is not None
         ):
             last_x = torch.as_tensor(last_x).float().to(self.device)
             last_y = torch.as_tensor(last_y).float().to(self.device)
@@ -168,15 +167,15 @@ class DecisionTransformerDesigner(BaseDesigner):
         
 
 @torch.no_grad()
-def evaluate_decision_transformer_designer(problem, designer: DecisionTransformerDesigner, datasets, eval_episode):
+def evaluate_decision_transformer_designer(problem, designer: DecisionTransformerDesigner, datasets, eval_episode, init_regret):
     print(f"evaluating on {datasets} ...")
     designer.eval()
     all_id_y = {}
     for id in datasets:
         problem.reset_task(id)
-        designer.reset(eval_episode)
-        last_x, last_y, last_regrets = None, None, None
-        this_y = np.zeros([problem.seq_len, eval_episode, 1])
+        designer.reset(eval_episode, init_regret)
+        last_x, last_y, last_regrets = None, None, init_regret
+        this_y = np.zeros([eval_episode, problem.seq_len, 1])
         for i in range(problem.seq_len):
             last_x = designer.suggest(
                 last_x=last_x, 
@@ -185,8 +184,8 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
                 determinisitc=True
             )
             last_y = problem.forward(last_x)
-            last_regrets = problem.best_y - last_y
-            this_y[i] = last_y.detach().cpu().numpy()
+            last_regrets = last_regrets - (problem.best_y - last_y)
+            this_y[:, i] = last_y.detach().cpu().numpy()
         all_id_y[id] = this_y
         
     metrics = {}
@@ -194,7 +193,7 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
     # best y: max over sequence, average over eval num
     best_y_sum = 0
     for id in all_id_y:
-        best_y_this = all_id_y[id].max(axis=0).mean()
+        best_y_this = all_id_y[id].max(axis=1).mean()
         metrics["best_y_"+id] = best_y_this
         best_y_sum += best_y_this
     metrics["best_y_agg"] = best_y_sum / len(all_id_y)
@@ -202,7 +201,7 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
     # regret: (best_y - y), sum over sequence, average over eval num
     regret_sum = 0
     for id in all_id_y:
-        regret_this = (problem.best_y - all_id_y[id]).sum(axis=0).mean()
+        regret_this = (problem.best_y - all_id_y[id]).sum(axis=1).mean()
         metrics["regret_"+id] = regret_this
         regret_sum += regret_this
     metrics["regret_agg"] = regret_sum / len(all_id_y)

@@ -76,4 +76,12 @@ for i_epoch in trange(args.num_epoch):
         train_metrics = designer.update(batch, clip_grad=args.clip_grad)
 
     if i_epoch % args.eval_interval == 0:
-        eval_test_metrics = evaluate_decision_transformer_designer(problem, designer, args.test_datasets, args.eval_episode)
+        for init_regret in args.init_regrets:
+            eval_test_metrics = evaluate_decision_transformer_designer(problem, designer, args.test_datasets, args.eval_episodes, init_regret)
+            eval_train_metrics = evaluate_decision_transformer_designer(problem, designer, args.train_datasets, args.eval_episodes, init_regret)
+            logger.log_scalars(f"eval_trainset_regret={str(init_regret)}", eval_train_metrics, step=i_epoch)
+            logger.log_scalars(f"eval_testset_regret={str(init_regret)}", eval_test_metrics, step=i_epoch)
+
+    if i_epoch % args.log_interval == 0:
+        logger.log_scalars("", train_metrics, step=i_epoch)
+    

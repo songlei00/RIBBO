@@ -22,13 +22,13 @@ batch_size = 64
 num_workers = 4
 
 num_epoch = 1000
-eval_interval = 10
+eval_interval = 20
 log_interval = 1
-eval_episodes = 5
+eval_episodes = 1
 
-init_regrets = [0, 10, 20]
+init_regrets = [10, 20, 30]
 
-hpob_root_dir="./hpob/"
+hpob_root_dir="./data/downloaded_data/hpob/"
 
 class optimizer_args(NameSpace):
     lr = 1e-4

@@ -23,10 +23,10 @@ class TrajectoryDataset(Dataset):
         return {
             "x": trajectory.X, 
             "y": trajectory.y.unsqueeze(-1), 
+            "regrets": metric_regret(trajectory, self.best_y).unsqueeze(-1), 
             "timesteps": timesteps, 
             "masks": torch.ones_like(timesteps).float()
         }
-        # return trajectory.X, trajectory.y, metric_regret(trajectory, self.best_y)
 
     def __len__(self):
         return len(self.trajectory_list)
