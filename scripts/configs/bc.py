@@ -24,7 +24,7 @@ num_workers = 4
 num_epoch = 1000
 eval_interval = 10
 log_interval = 1
-eval_episodes = 5
+eval_episodes = 1
 
 hpob_root_dir="./data/downloaded_data/hpob/"
 
