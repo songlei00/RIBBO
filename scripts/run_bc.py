@@ -34,9 +34,6 @@ def filter_designer(dataset):
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:5]
     args.test_datasets = args.test_datasets[args.id][:5]
-    args.x_dim = args.x_dim[args.id]
-    args.y_dim = args.y_dim[args.id]
-    args.seq_len = args.seq_len[args.id]
 
 args = parse_args(post_init=post_init)
 exp_name = "-".join([args.id, "seed"+str(args.seed)])
@@ -55,6 +52,7 @@ dataset = problem.get_dataset()
 # dataset = filter_designer(dataset)
 
 logger.info('dataset length: {}'.format(len(dataset)))
+logger.info('x dim: {}'.format(problem.x_dim))
 logger.info(problem.id2info)
 
 transformer = BCTransformer(

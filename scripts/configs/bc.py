@@ -4,7 +4,7 @@ seed = 0
 debug = False
 name = "bc"
 
-id = "4796"
+id = "6767"
 
 x_type = "deterministic"
 y_loss_coeff = 0.0
@@ -41,7 +41,4 @@ class wandb(NameSpace):
 from scripts.configs.dataset_specs import (
     train_datasets, 
     test_datasets, 
-    x_dim, 
-    y_dim, 
-    seq_len
 )
