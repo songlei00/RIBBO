@@ -194,6 +194,12 @@ def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, d
         metrics["regret_"+id] = regret_this
         regret_sum += regret_this
     metrics["regret_agg"] = regret_sum / len(all_id_y)
+
+    trajectory_record = {}
+    # mean y
+    for id in all_id_y:
+        mean_y = all_id_y[id].mean(axis=0)
+        trajectory_record['mean_y_' + id] = mean_y
     
     designer.train()
-    return metrics
+    return metrics, trajectory_record

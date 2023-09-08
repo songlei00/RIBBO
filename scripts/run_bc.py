@@ -10,6 +10,26 @@ from algorithms.designers.bc_designer import BCTransformerDesigner, evaluate_bc_
 from algorithms.modules.bc import BCTransformer
 from datasets.load_datasets import load_hpob_dataset
 from problems.hpob_problem import HPOBMetaProblem
+from datasets.datasets import TrajectoryDataset
+
+designers = [
+    # 'Random',
+    # 'GridSearch',
+    # 'ShuffledGridSearch',
+    # 'RegularizedEvolution',
+    # 'HillClimbing',
+    'EagleStrategy',
+    # 'Vizier',
+    # 'HeBO',
+    # 'CMAES',
+]
+
+def filter_designer(dataset):
+    def filter_fn(trajectory):
+        metadata = trajectory.metadata
+        return metadata['designer'] in designers
+    ret = list(filter(filter_fn, dataset.trajectory_list))
+    return TrajectoryDataset(ret)
 
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:5]
@@ -32,6 +52,9 @@ problem = HPOBMetaProblem(
     root_dir=args.hpob_root_dir, 
 )
 dataset = problem.get_dataset()
+# dataset = filter_designer(dataset)
+
+logger.info('dataset length: {}'.format(len(dataset)))
 logger.info(problem.id2info)
 
 transformer = BCTransformer(
@@ -77,8 +100,8 @@ for i_epoch in trange(args.num_epoch):
         train_metrics = designer.update(batch, clip_grad=args.clip_grad)
     
     if i_epoch % args.eval_interval == 0:
-        eval_test_metrics = evaluate_bc_transformer_designer(problem, designer, args.test_datasets, args.eval_episodes)
-        eval_train_metrics = evaluate_bc_transformer_designer(problem, designer, args.train_datasets, args.eval_episodes)
+        eval_test_metrics, _ = evaluate_bc_transformer_designer(problem, designer, args.test_datasets, args.eval_episodes)
+        eval_train_metrics, _ = evaluate_bc_transformer_designer(problem, designer, args.train_datasets, args.eval_episodes)
         logger.info(f"Epoch {i_epoch}: \n{eval_train_metrics}\n{eval_test_metrics}")
         logger.log_scalars("eval_trainset", eval_train_metrics, step=i_epoch)
         logger.log_scalars("eval_testset", eval_test_metrics, step=i_epoch)
@@ -86,3 +109,16 @@ for i_epoch in trange(args.num_epoch):
     if i_epoch % args.log_interval == 0:
         logger.log_scalars("", train_metrics, step=i_epoch)
     
+_, test_trajectory_record = evaluate_bc_transformer_designer(problem, designer, args.test_datasets, args.eval_episodes)
+_, train_trajectory_record = evaluate_bc_transformer_designer(problem, designer, args.train_datasets, args.eval_episodes)
+for mode, record in zip(['test', 'train'], [test_trajectory_record, train_trajectory_record]):
+    for key in record:
+        id = key.split('_')[-1]
+
+        ys = [y.item() for y in record[key]]
+        best_ys = [ys[0]]
+        for y in ys[1: ]:
+            best_ys.append(max(best_ys[-1], y))
+
+        for i in range(len(record[key])):
+            logger.log_scalars('final rollout of {}'.format(mode), {'best_y_'+id: best_ys[i], 'y_'+id: ys[i]}, i)
