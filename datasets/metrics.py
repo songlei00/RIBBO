@@ -9,7 +9,7 @@ def metric_best_y(trajectory):
 
 def metric_regret(trajectory, best_y):
     metadata, X, y = trajectory.metadata, trajectory.X, trajectory.y
-    regret = torch.norm(best_y - y, p=1)
+    regret = torch.flip(torch.cumsum(torch.flip(best_y - y, dims=[0]), dim=0), dims=[0])
     return regret
 
 
