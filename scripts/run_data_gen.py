@@ -7,11 +7,7 @@ import multiprocessing as mp
 
 import numpy as np
 
-os.environ['XLA_FLAGS'] = ('--xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1')
-os.environ['JAX_PLATFORM_NAME'] = 'cpu'
 
-
-SMOKE_TEST = True
 designers = [
     'Random',
     # 'GridSearch',
@@ -26,7 +22,7 @@ designers = [
 
 
 def get_cmd(designer, search_space_id, dataset_id, out_name, length, seed):
-    prefix = 'PYTHONPATH=.:$PYTHONPATH'
+    prefix = 'taskset -c {}-{}'.format(args.cpu_start, args.cpu_end)
     cmd = 'python data_gen/data_gen_main.py \
         --designer={} \
         --search_space_id={} \
@@ -43,6 +39,9 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', type=int, required=True)
+    parser.add_argument('--smoke_test', action='store_true')
+    parser.add_argument('--cpu_start', type=int, required=True)
+    parser.add_argument('--cpu_end', type=int, required=True)
     args = parser.parse_args()
 
     mode = ['train', 'test', 'validation']
@@ -55,7 +54,7 @@ if __name__ == '__main__':
     # summary_stats[key] = value
     # print(summary_stats)
 
-    if SMOKE_TEST:
+    if args.smoke_test:
         search_space_id = list(summary_stats.keys())[0]
         dataset_id = summary_stats[search_space_id][0]
         print(search_space_id, dataset_id)

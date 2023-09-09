@@ -1,3 +1,6 @@
+import os
+os.environ['XLA_FLAGS'] = ('--xla_force_host_platform_device_count=1 --xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1')
+os.environ['JAX_PLATFORM_NAME'] = 'cpu'
 from typing import Sequence
 try:
     import ujson as json
@@ -16,7 +19,6 @@ from regularized_evolution_designer import RegularizedEvolutionDesigner
 from hebo_designer import HeBODesigner
 from hpob_problem_statement import problem_statement as hpob_problem_statement
 from utils import seed_everything
-
 
 def designer_factory(name, problem, seed):
     designer_config = {
