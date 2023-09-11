@@ -49,6 +49,7 @@ problem = HPOBMetaProblem(
     root_dir=args.hpob_root_dir, 
 )
 dataset = problem.get_dataset()
+dataset.set_input_seq_len(args.input_seq_len)
 # dataset = filter_designer(dataset)
 
 logger.info('dataset length: {}'.format(len(dataset)))
@@ -75,8 +76,10 @@ designer = BCTransformerDesigner(
     y_dim=problem.y_dim, 
     embed_dim=args.embed_dim, 
     seq_len=problem.seq_len, 
+    input_seq_len=args.input_seq_len, 
     x_type=args.x_type, 
     y_loss_coeff=args.y_loss_coeff, 
+    use_abs_timestep=args.use_abs_timestep, 
     device=args.device
 )
 

@@ -21,8 +21,10 @@ class BCTransformerDesigner(BaseDesigner):
         y_dim: int, 
         embed_dim: int, 
         seq_len: int, 
+        input_seq_len: int, 
         x_type: str="deterministic", 
         y_loss_coeff: float=0.0, 
+        use_abs_timestep: bool=False, 
         device: Union[str, torch.device]="cpu", 
         *args, 
         **kwargs
@@ -33,8 +35,10 @@ class BCTransformerDesigner(BaseDesigner):
         self.y_dim = y_dim
         self.embed_dim = embed_dim
         self.seq_len = seq_len
+        self.input_seq_len = input_seq_len
         self.x_type = x_type
         self.y_loss_coeff = y_loss_coeff
+        self.use_abs_timestep = use_abs_timestep
         
         if x_type == "deterministic":
             self.x_head = SquashedDeterministicActor(
@@ -80,7 +84,7 @@ class BCTransformerDesigner(BaseDesigner):
         self.step_count = 0
         torch.cuda.empty_cache()
         
-    @torch.no_grad()
+    @torch.no_grad() # need to adapt for seq len
     def suggest(
         self, 
         last_x=None, 
@@ -96,14 +100,14 @@ class BCTransformerDesigner(BaseDesigner):
             self.step_count += 1
         
         out = self.transformer(
-            x=self.past_x[:, :self.step_count], 
-            y=self.past_y[:, :self.step_count], 
-            timesteps=self.timesteps[:, :self.step_count], 
+            x=self.past_x[:, :self.step_count][:, -self.input_seq_len:], 
+            y=self.past_y[:, :self.step_count][:, -self.input_seq_len:], 
+            timesteps=self.timesteps[:, :self.step_count][:, -self.input_seq_len] if self.use_abs_timestep else None, 
             attention_mask=None, 
             key_padding_mask=None # during testing all positions are valid
         )
         suggest_x = self.x_head.sample(out[:, 0::2], deterministic=determinisitc)[0]
-        return suggest_x[:, self.step_count]
+        return suggest_x[:, -1]
     
     def update(self, batch: Dict[str, Any], clip_grad: Optional[float]=None):
         x, y, timesteps, masks = [
@@ -116,7 +120,7 @@ class BCTransformerDesigner(BaseDesigner):
         out = self.transformer(
             x=x, 
             y=y, 
-            timesteps=timesteps, 
+            timesteps=timesteps if self.use_abs_timestep else None, 
             attention_mask=None, 
             key_padding_mask=key_padding_mask
         )
