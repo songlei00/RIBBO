@@ -29,6 +29,7 @@ def filter_designer(dataset):
         metadata = trajectory.metadata
         return metadata['designer'] in designers
     ret = list(filter(filter_fn, dataset.trajectory_list))
+    logger.info('Filter designers')
     return TrajectoryDataset(ret)
 
 def post_init(args):
@@ -49,8 +50,8 @@ problem = HPOBMetaProblem(
     root_dir=args.hpob_root_dir, 
 )
 dataset = problem.get_dataset()
-dataset.set_input_seq_len(args.input_seq_len)
 # dataset = filter_designer(dataset)
+dataset.set_input_seq_len(args.input_seq_len)
 
 logger.info('dataset length: {}'.format(len(dataset)))
 logger.info('x dim: {}'.format(problem.x_dim))

@@ -18,7 +18,7 @@ embed_dropout = 0.1
 pos_encoding = "embed"
 clip_grad = None
 use_abs_timestep = False
-input_seq_len = 100
+input_seq_len = 300
 
 batch_size = 64
 num_workers = 4

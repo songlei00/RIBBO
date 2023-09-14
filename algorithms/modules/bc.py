@@ -6,6 +6,22 @@ import torch.nn as nn
 from offlinerllib.module.net.attention.gpt2 import GPT2
 from offlinerllib.module.net.attention.positional_encoding import get_pos_encoding
 from offlinerllib.module.net.attention.base import NoDecayParameter
+import UtilsRL.exp as exp
+
+def get_vector_statistics(v):
+    func_dict = {
+        'min': torch.min,
+        'max': torch.max,
+        'mean': torch.mean,
+        'median': torch.median,
+        'norm': lambda x: torch.norm(x, p=1) / len(x.flatten()),
+    }
+    ret = dict()
+    for key, func in func_dict.items():
+        ret[key] = func(v)
+    return ret
+
+global_step = 0
 
 class BCTransformer(GPT2):
     def __init__(
@@ -53,8 +69,25 @@ class BCTransformer(GPT2):
         key_padding_mask: Optional[torch.Tensor]=None, 
     ):
         B, L, X = x.shape
-        x_embedding = self.pos_encoding(self.x_embed(x), timesteps)
-        y_embedding = self.pos_encoding(self.y_embed(y), timesteps)
+        x_embedding_before = self.x_embed(x)
+        y_embedding_before = self.y_embed(y)
+        x_embedding = self.pos_encoding(x_embedding_before, timesteps)
+        y_embedding = self.pos_encoding(y_embedding_before, timesteps)
+
+        # log
+        # x_pos_embedding = x_embedding - x_embedding_before
+        # y_pos_embedding = y_embedding - y_embedding_before
+
+        # for key, embedding in zip(
+        #     ['x_pos', 'y_pos', 'x', 'y'],
+        #     [x_pos_embedding, y_pos_embedding, x_embedding, y_embedding]
+        # ):
+        #     exp.logger.log_scalers(key, get_vector_statistics(embedding), step=global_step)
+        # global_step += 1
+
+        # add up
+        x_embedding = x_embedding + y_embedding
+        y_embedding = torch.zeros_like(y_embedding)
         
         if key_padding_mask is not None:
             key_padding_mask = torch.stack([key_padding_mask, key_padding_mask], dim=2).reshape(B, 2*L)

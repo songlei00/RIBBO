@@ -24,7 +24,7 @@ class TrajectoryDataset(Dataset):
         assert self.input_seq_len is not None, "input seq len must be set before iterating over the dataset"
         trajectory = self.trajectory_list[idx]
         traj_len = trajectory.X.shape[0]
-        start_idx = np.random.choice(traj_len-self.input_seq_len)
+        start_idx = np.random.choice(traj_len-self.input_seq_len+1)
         timesteps = torch.arange(start_idx, start_idx + self.input_seq_len).long()
         return {
             "x": trajectory.X[start_idx:start_idx+self.input_seq_len], 
