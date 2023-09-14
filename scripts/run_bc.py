@@ -50,8 +50,8 @@ problem = HPOBMetaProblem(
     root_dir=args.hpob_root_dir, 
 )
 dataset = problem.get_dataset()
-# dataset = filter_designer(dataset)
 dataset.set_input_seq_len(args.input_seq_len)
+# dataset = filter_designer(dataset)
 
 logger.info('dataset length: {}'.format(len(dataset)))
 logger.info('x dim: {}'.format(problem.x_dim))
