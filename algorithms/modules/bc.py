@@ -53,22 +53,20 @@ class BCTransformer(GPT2):
         
     def encode(self, x, y, timesteps, key_padding_mask):
         B, L, X = x.shape
+        x_embedding = self.x_embed(x)
+        y_embedding = self.y_embed(y)
         if self.mix_method == "concat": 
-            x_embedding = self.x_embed(x)
-            y_embedding = self.y_embed(y)
             inputs = torch.concat([x_embedding, y_embedding], dim=-1)
             inputs = self.pos_encoding(self.input_proj(torch.nn.functional.relu(inputs)), timesteps)
             return inputs, key_padding_mask
         elif self.mix_method == "interleave":
-            x_embedding = self.pos_encoding(self.x_embed(x), timesteps)
-            y_embedding = self.pos_encoding(self.y_embed(y), timesteps)
+            x_embedding = self.pos_encoding(x_embedding, timesteps)
+            y_embedding = self.pos_encoding(y_embedding, timesteps)
             inputs = torch.stack([x_embedding, y_embedding], dim=2).reshape(B, 2*L, self.embed_dim)
             if key_padding_mask is not None:
                 key_padding_mask = torch.stack([key_padding_mask, key_padding_mask], dim=2).reshape(B, 2*L)
             return inputs, key_padding_mask
         elif self.mix_method == "add":
-            x_embedding = self.pos_encoding(self.x_embed(x), timesteps)
-            y_embedding = self.pos_encoding(self.y_embed(y), timesteps)
             inputs = x_embedding + y_embedding
             inputs = self.pos_encoding(inputs, timesteps)
             return inputs, key_padding_mask
