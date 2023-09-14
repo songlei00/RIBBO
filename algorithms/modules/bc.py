@@ -23,6 +23,7 @@ def get_vector_statistics(v):
 
 global_step = 0
 
+
 class BCTransformer(GPT2):
     def __init__(
         self, 
@@ -33,13 +34,14 @@ class BCTransformer(GPT2):
         seq_len: int, 
         num_heads: int=1, 
         add_bos: bool=True, 
+        mix_method: str="concat", 
         attention_dropout: Optional[float]=0.1, 
         residual_dropout: Optional[float]=0.1, 
         embed_dropout: Optional[float]=0.1, 
         pos_encoding: str="embed", 
     ) -> None:
         super().__init__(
-            input_dim=embed_dim, # actually not used
+            input_dim=embed_dim, 
             embed_dim=embed_dim, 
             num_layers=num_layers, 
             num_heads=num_heads, 
@@ -50,7 +52,7 @@ class BCTransformer(GPT2):
             pos_encoding="none", 
             seq_len=0
         )
-        # we manually do the positional encoding here
+        # we manually do the positional encoding and bos embedding outside
         self.embed_dim = embed_dim
         self.add_bos = add_bos
         if self.add_bos:
@@ -59,6 +61,40 @@ class BCTransformer(GPT2):
         self.x_embed = nn.Linear(x_dim, embed_dim)
         self.y_embed = nn.Linear(y_dim, embed_dim)
         self.embed_ln = nn.LayerNorm(embed_dim)
+        
+        # how to mix the inputs
+        self.mix_method = mix_method
+        if self.mix_method == "concat":
+            self.input_proj = nn.Linear(2*embed_dim, embed_dim)
+        
+    def encode(self, x, y, timesteps, key_padding_mask):
+        B, L, X = x.shape
+        x_embedding = self.x_embed(x)
+        y_embedding = self.y_embed(y)
+        if self.mix_method == "concat": 
+            inputs = torch.concat([x_embedding, y_embedding], dim=-1)
+            inputs = self.pos_encoding(self.input_proj(torch.nn.functional.relu(inputs)), timesteps)
+            return inputs, key_padding_mask
+        elif self.mix_method == "interleave":
+            x_embedding = self.pos_encoding(x_embedding, timesteps)
+            y_embedding = self.pos_encoding(y_embedding, timesteps)
+            inputs = torch.stack([x_embedding, y_embedding], dim=2).reshape(B, 2*L, self.embed_dim)
+            if key_padding_mask is not None:
+                key_padding_mask = torch.stack([key_padding_mask, key_padding_mask], dim=2).reshape(B, 2*L)
+            return inputs, key_padding_mask
+        elif self.mix_method == "add":
+            inputs = x_embedding + y_embedding
+            inputs = self.pos_encoding(inputs, timesteps)
+            return inputs, key_padding_mask
+        
+    def decode(self, out):
+        assert self.add_bos, "Currently BCTransformer must have bos token"
+        if self.mix_method == "concat":
+            return out, out
+        elif self.mix_method == "interleave": 
+            return out[:, 0::2], out[1::2]
+        elif self.mix_method == "add":
+            return out, out
         
     def forward(
         self, 
@@ -69,47 +105,23 @@ class BCTransformer(GPT2):
         key_padding_mask: Optional[torch.Tensor]=None, 
     ):
         B, L, X = x.shape
-        x_embedding_before = self.x_embed(x)
-        y_embedding_before = self.y_embed(y)
-        x_embedding = self.pos_encoding(x_embedding_before, timesteps)
-        y_embedding = self.pos_encoding(y_embedding_before, timesteps)
-
-        # log
-        # x_pos_embedding = x_embedding - x_embedding_before
-        # y_pos_embedding = y_embedding - y_embedding_before
-
-        # for key, embedding in zip(
-        #     ['x_pos', 'y_pos', 'x', 'y'],
-        #     [x_pos_embedding, y_pos_embedding, x_embedding, y_embedding]
-        # ):
-        #     exp.logger.log_scalers(key, get_vector_statistics(embedding), step=global_step)
-        # global_step += 1
-
-        # add up
-        x_embedding = x_embedding + y_embedding
-        y_embedding = torch.zeros_like(y_embedding)
-        
-        if key_padding_mask is not None:
-            key_padding_mask = torch.stack([key_padding_mask, key_padding_mask], dim=2).reshape(B, 2*L)
-        stacked_input = torch.stack([x_embedding, y_embedding], dim=2).reshape(B, 2*L, self.embed_dim)
+        inputs, key_padding_mask = self.encode(x, y, timesteps, key_padding_mask)
         if self.add_bos:
+            inputs = torch.concat([
+                self.bos_embed.repeat(B, 1, 1), 
+                inputs
+            ], dim=1)
             if key_padding_mask is not None:
                 key_padding_mask = torch.concat([
-                    torch.ones([B, 1]).to(stacked_input.device), 
+                    torch.ones([B, 1]).to(inputs.device), 
                     key_padding_mask
                 ], dim=1)
-            stacked_input = torch.concat([
-                self.bos_embed.repeat(B, 1, 1), 
-                stacked_input
-            ], dim=1)
-        stacked_input = self.embed_ln(stacked_input)
+        inputs = self.embed_ln(inputs)
         out = super().forward(
-            inputs=stacked_input, 
+            inputs=inputs, 
             timesteps=None, 
             attention_mask=attention_mask, 
             key_padding_mask=key_padding_mask, 
             do_embedding=False
         )
-
-        return out    # (batch size, length, action_shape) # out is not projected to action
-
+        return self.decode(out)

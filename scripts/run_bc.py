@@ -65,6 +65,7 @@ transformer = BCTransformer(
     seq_len=problem.seq_len, 
     num_heads=args.num_heads, 
     add_bos=True, 
+    mix_method=args.mix_method, 
     attention_dropout=args.attention_dropout, 
     residual_dropout=args.residual_dropout, 
     embed_dropout=args.embed_dropout, 
