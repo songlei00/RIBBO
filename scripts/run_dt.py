@@ -9,13 +9,31 @@ from UtilsRL.logger import CompositeLogger
 from algorithms.designers.dt_designer import DecisionTransformerDesigner, evaluate_decision_transformer_designer
 from algorithms.modules.dt import DecisionTransformer
 from problems.hpob_problem import HPOBMetaProblem
+from datasets.datasets import TrajectoryDataset
+
+designers = [
+    # 'Random',
+    # 'GridSearch',
+    # 'ShuffledGridSearch',
+    # 'RegularizedEvolution',
+    # 'HillClimbing',
+    'EagleStrategy',
+    # 'Vizier',
+    # 'HeBO',
+    # 'CMAES',
+]
+
+def filter_designer(dataset):
+    def filter_fn(trajectory):
+        metadata = trajectory.metadata
+        return metadata['designer'] in designers
+    ret = list(filter(filter_fn, dataset.trajectory_list))
+    logger.info('Filter designers')
+    return TrajectoryDataset(ret)
 
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:5]
     args.test_datasets = args.test_datasets[args.id][:5]
-    args.x_dim = args.x_dim[args.id]
-    args.y_dim = args.y_dim[args.id]
-    args.seq_len = args.seq_len[args.id]
 
 args = parse_args(post_init=post_init)
 exp_name = "-".join([args.id, "seed"+str(args.seed)])
@@ -31,6 +49,11 @@ problem = HPOBMetaProblem(
     root_dir=args.hpob_root_dir, 
 )
 dataset = problem.get_dataset()
+# dataset = filter_designer(dataset)
+dataset.set_input_seq_len(args.input_seq_len)
+
+logger.info('dataset length: {}'.format(len(dataset)))
+logger.info('x dim: {}'.format(problem.x_dim))
 logger.info(problem.id2info)
 
 transformer = DecisionTransformer(
@@ -40,6 +63,8 @@ transformer = DecisionTransformer(
     num_layers=args.num_layers, 
     seq_len=problem.seq_len, 
     num_heads=args.num_heads, 
+    add_bos=True, 
+    mix_method=args.mix_method, 
     attention_dropout=args.attention_dropout, 
     residual_dropout=args.residual_dropout, 
     embed_dropout=args.embed_dropout, 
@@ -51,9 +76,11 @@ designer = DecisionTransformerDesigner(
     x_dim=problem.x_dim, 
     y_dim=problem.y_dim, 
     embed_dim=args.embed_dim, 
-    seq_len=args.seq_len, 
+    seq_len=problem.seq_len, 
+    input_seq_len=args.input_seq_len, 
     x_type=args.x_type, 
     y_loss_coeff=args.y_loss_coeff, 
+    use_abs_timestep=args.use_abs_timestep, 
     device=args.device
 )
 
@@ -85,3 +112,18 @@ for i_epoch in trange(args.num_epoch):
     if i_epoch % args.log_interval == 0:
         logger.log_scalars("", train_metrics, step=i_epoch)
     
+
+# final rollout for train datasets
+for mode, datasets in zip(["train", "test"], [args.train_datasets, args.test_datasets]):
+    for init_regret in args.init_regrets:
+        print(f"Evaluating final rollout on {mode} datasets {datasets} with regret {init_regret} ...")
+        eval_metrics = evaluate_decision_transformer_designer(problem, designer, datasets, args.eval_episodes, init_regret)
+        for key in eval_train_metrics:
+            id = key.split("_")[-1]
+            ys = [y.item for y in eval_metrics[key]]
+            best_ys = [ys[0]]
+            for y in ys[1: ]:
+                best_ys.append(max(best_ys[-1], y))
+
+            for i in range(len(ys)):
+                logger.log_scalars('rollout_{}_regret={}'.format(mode, str(init_regret)), {'best_y_'+id: best_ys[i], 'y_'+id: ys[i]}, i)

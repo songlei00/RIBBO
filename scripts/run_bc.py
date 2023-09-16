@@ -8,7 +8,6 @@ from UtilsRL.exp import parse_args, setup
 from UtilsRL.logger import CompositeLogger
 from algorithms.designers.bc_designer import BCTransformerDesigner, evaluate_bc_transformer_designer
 from algorithms.modules.bc import BCTransformer
-from datasets.load_datasets import load_hpob_dataset
 from problems.hpob_problem import HPOBMetaProblem
 from datasets.datasets import TrajectoryDataset
 
@@ -50,8 +49,8 @@ problem = HPOBMetaProblem(
     root_dir=args.hpob_root_dir, 
 )
 dataset = problem.get_dataset()
-dataset.set_input_seq_len(args.input_seq_len)
 # dataset = filter_designer(dataset)
+dataset.set_input_seq_len(args.input_seq_len)
 
 logger.info('dataset length: {}'.format(len(dataset)))
 logger.info('x dim: {}'.format(problem.x_dim))

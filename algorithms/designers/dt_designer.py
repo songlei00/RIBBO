@@ -12,6 +12,8 @@ from offlinerllib.module.actor import (
     DeterministicActor
 )
 from algorithms.designers.base import BaseDesigner
+from algorithms.modules.dt import DecisionTransformer
+
 
 class DecisionTransformerDesigner(BaseDesigner):
     def __init__(
@@ -21,33 +23,40 @@ class DecisionTransformerDesigner(BaseDesigner):
         y_dim: int, 
         embed_dim: int, 
         seq_len: int, 
+        input_seq_len: int, 
         x_type: str="deterministic", 
         y_loss_coeff: float=0.0, 
+        use_abs_timestep: bool=False, 
         device: Union[str, torch.device]="cpu", 
         *args, 
         **kwargs
     ) -> None:
         super().__init__()
+        assert isinstance(transformer, DecisionTransformer)
         self.transformer = transformer
         self.x_dim = x_dim
         self.y_dim = y_dim
         self.embed_dim = embed_dim
         self.seq_len = seq_len
+        self.input_seq_len = input_seq_len
         self.x_type = x_type
         self.y_loss_coeff = y_loss_coeff
+        self.use_abs_timestep = use_abs_timestep
         
         if x_type == "deterministic":
             self.x_head = SquashedDeterministicActor(
                 backend=torch.nn.Identity(), 
                 input_dim=embed_dim, 
                 output_dim=x_dim, 
+                hidden_dims=[embed_dim, ]
             )
         elif x_type == "stochastic":
             self.x_head = SquashedGaussianActor(
                 backend=torch.nn.Identity(), 
                 input_dim=embed_dim, 
                 output_dim=x_dim, 
-                reparameterize=False
+                reparameterize=False, 
+                hidden_dims=[embed_dim, ]
             )
         else:
             raise ValueError
@@ -55,7 +64,8 @@ class DecisionTransformerDesigner(BaseDesigner):
             self.y_head = DeterministicActor(
                 backend=torch.nn.Identity(), 
                 input_dim=embed_dim, 
-                output_dim=y_dim
+                output_dim=y_dim, 
+                hidden_dims=[embed_dim, ]
             )
         
         self.to(device)
@@ -79,7 +89,6 @@ class DecisionTransformerDesigner(BaseDesigner):
         self.past_regrets[:, 0] = init_regret
         self.timesteps = torch.arange(self.seq_len+1).long().to(self.device).reshape(1, self.seq_len+1)
         self.step_count = 0
-        torch.cuda.empty_cache()
         
     @torch.no_grad()
     def suggest(
@@ -102,16 +111,16 @@ class DecisionTransformerDesigner(BaseDesigner):
             self.past_regrets[:, self.step_count+1] = last_regrets
             self.step_count += 1
         
-        out = self.transformer(
-            x=self.past_x[:, :self.step_count+1], 
-            y=self.past_y[:, :self.step_count+1], 
-            regrets_to_go=self.past_regrets[:, :self.step_count+1], 
+        x_pred, *_ = self.transformer(
+            x=self.past_x[:, :self.step_count+1][:, -self.input_seq_len:], 
+            y=self.past_y[:, :self.step_count+1][:, -self.input_seq_len:], 
+            regrets_to_go=self.past_regrets[:, :self.step_count+1][:, -self.input_seq_len:] if self.use_abs_timestep else None, 
             timesteps=self.timesteps[:, :self.step_count+1], 
             attention_mask=None, 
             key_padding_mask=None # during testing all positions are valid
         )
-        suggest_x = self.x_head.sample(out[:, 0::3], deterministic=determinisitc)[0]
-        return suggest_x[:, self.step_count]
+        suggest_x = self.x_head.sample(x_pred[:, self.step_count], deterministic=determinisitc)[0]
+        return suggest_x
     
     def update(self, batch: Dict[str, Any], clip_grad: Optional[float]=None):
         x, y, regrets, timesteps, masks = [
@@ -121,30 +130,30 @@ class DecisionTransformerDesigner(BaseDesigner):
         B, L, X = x.shape
         
         key_padding_mask = ~masks.to(torch.bool)
-        out = self.transformer(
+        x_pred, y_pred, regrets_pred = self.transformer(
             x=x, 
             y=y, 
             regrets_to_go=regrets, 
-            timesteps=timesteps, 
+            timesteps=timesteps if self.use_abs_timestep else None, 
             attention_mask=None, 
             key_padding_mask=key_padding_mask
         )
         # x reconstruction
         if isinstance(self.x_head, SquashedDeterministicActor):
             x_loss = torch.nn.functional.mse_loss(
-                self.x_head.sample(out[:, 0::3])[0], 
+                self.x_head.sample(x_pred)[0], 
                 x.detach(), 
                 reduction="none"
             )
         elif isinstance(self.x_head, SquashedGaussianActor):
             x_loss = self.x_head.evaluate(
-                out[:, 0::3], 
+                x_pred, 
                 x.detach(), 
             )[0]
         tot_loss = x_loss = (x_loss * masks.unsqueeze(-1)).mean()
         if self.y_loss_coeff:
             y_loss = torch.nn.functional.mse_loss(
-                self.y_head.sample(out[:, 1::3])[0], 
+                self.y_head.sample(y_pred)[0], 
                 y.detach(), 
                 reduction="none"
             )

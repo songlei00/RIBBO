@@ -31,6 +31,7 @@ class BCTransformerDesigner(BaseDesigner):
         **kwargs
     ) -> None:
         super().__init__()
+        assert isinstance(transformer, BCTransformer)
         self.transformer = transformer
         self.x_dim = x_dim
         self.y_dim = y_dim

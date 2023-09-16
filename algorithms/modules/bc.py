@@ -6,22 +6,6 @@ import torch.nn as nn
 from offlinerllib.module.net.attention.gpt2 import GPT2
 from offlinerllib.module.net.attention.positional_encoding import get_pos_encoding
 from offlinerllib.module.net.attention.base import NoDecayParameter
-import UtilsRL.exp as exp
-
-def get_vector_statistics(v):
-    func_dict = {
-        'min': torch.min,
-        'max': torch.max,
-        'mean': torch.mean,
-        'median': torch.median,
-        'norm': lambda x: torch.norm(x, p=1) / len(x.flatten()),
-    }
-    ret = dict()
-    for key, func in func_dict.items():
-        ret[key] = func(v)
-    return ret
-
-global_step = 0
 
 
 class BCTransformer(GPT2):
@@ -74,25 +58,35 @@ class BCTransformer(GPT2):
         if self.mix_method == "concat": 
             inputs = torch.concat([x_embedding, y_embedding], dim=-1)
             inputs = self.pos_encoding(self.input_proj(torch.nn.functional.relu(inputs)), timesteps)
-            return inputs, key_padding_mask
         elif self.mix_method == "interleave":
             x_embedding = self.pos_encoding(x_embedding, timesteps)
             y_embedding = self.pos_encoding(y_embedding, timesteps)
             inputs = torch.stack([x_embedding, y_embedding], dim=2).reshape(B, 2*L, self.embed_dim)
             if key_padding_mask is not None:
                 key_padding_mask = torch.stack([key_padding_mask, key_padding_mask], dim=2).reshape(B, 2*L)
-            return inputs, key_padding_mask
         elif self.mix_method == "add":
             inputs = x_embedding + y_embedding
             inputs = self.pos_encoding(inputs, timesteps)
-            return inputs, key_padding_mask
+        # add bos
+        if self.add_bos:
+            inputs = torch.concat([
+                self.bos_embed.repeat(B, 1, 1), 
+                inputs
+            ], dim=1)
+            if key_padding_mask is not None:
+                key_padding_mask = torch.concat([
+                    torch.zeros([B, 1]).bool().to(inputs.device), 
+                    key_padding_mask
+                ], dim=1)
+        return inputs, key_padding_mask
         
     def decode(self, out):
         assert self.add_bos, "Currently BCTransformer must have bos token"
         if self.mix_method == "concat":
             return out, out
-        elif self.mix_method == "interleave": 
-            return out[:, 0::2], out[1::2]
+        elif self.mix_method == "interleave":
+            # this is for padding the length of y
+            return out[:, 0::2], torch.concat([out[:, 1::2], torch.zeros_like(out[:, -1:]).to(out.device)], dim=1)
         elif self.mix_method == "add":
             return out, out
         
@@ -106,16 +100,6 @@ class BCTransformer(GPT2):
     ):
         B, L, X = x.shape
         inputs, key_padding_mask = self.encode(x, y, timesteps, key_padding_mask)
-        if self.add_bos:
-            inputs = torch.concat([
-                self.bos_embed.repeat(B, 1, 1), 
-                inputs
-            ], dim=1)
-            if key_padding_mask is not None:
-                key_padding_mask = torch.concat([
-                    torch.ones([B, 1]).to(inputs.device), 
-                    key_padding_mask
-                ], dim=1)
         inputs = self.embed_ln(inputs)
         out = super().forward(
             inputs=inputs, 

@@ -4,10 +4,11 @@ seed = 0
 debug = False
 name = "dt"
 
-id = "4796"
+id = "6767"
 
-x_type = "deterministic"
+x_type = "stochastic"
 y_loss_coeff = 0.0
+mix_method = "concat"
 
 embed_dim = 256
 num_layers = 4
@@ -15,8 +16,10 @@ num_heads = 4
 attention_dropout = 0.1
 residual_dropout = 0.1
 embed_dropout = 0.1
-pos_encoding = "embed"
+pos_encoding = "sinusoidal"
 clip_grad = None
+use_abs_timestep = True
+input_seq_len = 300
 
 batch_size = 64
 num_workers = 4
@@ -43,7 +46,4 @@ class wandb(NameSpace):
 from scripts.configs.dataset_specs import (
     train_datasets, 
     test_datasets, 
-    x_dim, 
-    y_dim, 
-    seq_len
 )

@@ -6,7 +6,7 @@ name = "bc"
 
 id = "6767"
 
-x_type = "deterministic"
+x_type = "stochastic"
 y_loss_coeff = 0.0
 mix_method = "concat"
 
@@ -16,7 +16,7 @@ num_heads = 4
 attention_dropout = 0.1
 residual_dropout = 0.1
 embed_dropout = 0.1
-pos_encoding = "embed"
+pos_encoding = "sinusoidal"
 clip_grad = None
 use_abs_timestep = True
 input_seq_len = 300
@@ -25,7 +25,7 @@ batch_size = 64
 num_workers = 4
 
 num_epoch = 1000
-eval_interval = 10
+eval_interval = 20
 log_interval = 1
 eval_episodes = 1
 
