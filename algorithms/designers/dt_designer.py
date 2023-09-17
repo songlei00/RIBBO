@@ -146,7 +146,7 @@ class DecisionTransformerDesigner(BaseDesigner):
                 reduction="none"
             )
         elif isinstance(self.x_head, SquashedGaussianActor):
-            x_loss = self.x_head.evaluate(
+            x_loss = - self.x_head.evaluate(
                 x_pred, 
                 x.detach(), 
             )[0]
