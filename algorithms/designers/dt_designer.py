@@ -214,6 +214,11 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
         metrics["regret_"+id] = regret_this
         regret_sum += regret_this
     metrics["regret_agg"] = regret_sum / len(all_id_y)
+
+    trajectory_record = {}
+    for id in all_id_y:
+        mean_y = all_id_y[id].mean(axis=0)
+        trajectory_record['mean_y_'+id] = mean_y
     
     designer.train()
-    return metrics
+    return metrics, trajectory_record

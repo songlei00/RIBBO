@@ -40,8 +40,8 @@ class optimizer_args(NameSpace):
     warmup_steps = 10_000
     
 class wandb(NameSpace):
-    entity = None
-    project = None
+    entity = "lamda-rl"
+    project = "IBO"
 
 from scripts.configs.dataset_specs import (
     train_datasets, 
