@@ -42,10 +42,10 @@ if __name__ == '__main__':
     parser.add_argument('--smoke_test', action='store_true')
     parser.add_argument('--cpu_start', type=int, required=True)
     parser.add_argument('--cpu_end', type=int, required=True)
+    parser.add_argument('--mode', type=str, default='train', choices=['train', 'test', 'validation'])
     args = parser.parse_args()
 
-    mode = ['train', 'test', 'validation']
-    with open('others/hpob-summary-stats/{}-summary-stats.json'.format(mode[0]), 'rb') as f:
+    with open('others/hpob-summary-stats/{}-summary-stats.json'.format(args.mode), 'rb') as f:
         summary_stats = json.load(f)
 
     # key = list(summary_stats.keys())[0]
@@ -72,7 +72,10 @@ if __name__ == '__main__':
         seed = args.seed
         failed_cmds = []
 
-        dir_path = 'data/generated_data/hpob/seed{}'.format(seed)
+        if args.mode == 'train':
+            dir_path = 'data/generated_data/hpob/seed{}'.format(seed)
+        else:
+            dir_path = 'data/generated_data/hpob_{}/seed{}'.format(args.mode, seed)
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
 

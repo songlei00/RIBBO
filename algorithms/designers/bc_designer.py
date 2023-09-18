@@ -13,6 +13,7 @@ from offlinerllib.module.actor import (
 )
 from algorithms.designers.base import BaseDesigner
 from algorithms.modules.bc import BCTransformer
+from algorithms.utils import calculate_metrics
 
 class BCTransformerDesigner(BaseDesigner):
     def __init__(
@@ -175,45 +176,26 @@ class BCTransformerDesigner(BaseDesigner):
 def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, datasets, eval_episode):
     print(f"evaluating on {datasets} ...")
     designer.eval()
-    all_id_y = {}
+    id2y, id2normalized_y = {}, {}
     for id in datasets:
         problem.reset_task(id)
         designer.reset(eval_episode)
-        last_x, last_y = None, None
+        last_x, last_y, last_normalized_y = None, None, None
         this_y = np.zeros([eval_episode, problem.seq_len, 1])
+        this_normalized_y = np.zeros([eval_episode, problem.seq_len, 1])
         for i in range(problem.seq_len):
             last_x = designer.suggest(
                 last_x=last_x, 
                 last_y=last_y, 
                 determinisitc=True
             )
-            last_y = problem.forward(last_x)
+            last_y, last_normalized_y = problem.forward(last_x)
             this_y[:, i] = last_y.detach().cpu().numpy()
-        all_id_y[id] = this_y
-        
-    metrics = {}
+            this_normalized_y[:, i] = last_normalized_y.detach().cpu().numpy()
+        id2y[id] = this_y
+        id2normalized_y[id] = this_normalized_y
     
-    # best y: max over sequence, average over eval num
-    best_y_sum = 0
-    for id in all_id_y:
-        best_y_this = all_id_y[id].max(axis=1).mean()
-        metrics["best_y_"+id] = best_y_this
-        best_y_sum += best_y_this
-    metrics["best_y_agg"] = best_y_sum / len(all_id_y)
-
-    # regret: (best_y - y), sum over sequence, average over eval num
-    regret_sum = 0
-    for id in all_id_y:
-        regret_this = (problem.best_y - all_id_y[id]).sum(axis=1).mean()
-        metrics["regret_"+id] = regret_this
-        regret_sum += regret_this
-    metrics["regret_agg"] = regret_sum / len(all_id_y)
-
-    trajectory_record = {}
-    # mean y
-    for id in all_id_y:
-        mean_y = all_id_y[id].mean(axis=0)
-        trajectory_record['mean_y_' + id] = mean_y
+    metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, problem.best_original_y, problem.best_y)
     
     designer.train()
     return metrics, trajectory_record

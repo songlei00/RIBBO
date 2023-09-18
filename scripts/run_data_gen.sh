@@ -8,8 +8,8 @@ max_proc=12
 n_cpu=`expr $max_cpu / $max_proc`
 echo $n_cpu
 
-min_seed=20
-max_seed=25
+min_seed=0
+max_seed=4
 fifo_name="/tmp/$$.fifo"
 mkfifo $fifo_name
 exec 7<>${fifo_name}
@@ -30,7 +30,8 @@ do
         python scripts/run_data_gen.py \
             --seed=$seed \
             --cpu_start=$cpu_start \
-            --cpu_end=$cpu_end
+            --cpu_end=$cpu_end \
+            --mode=test
         sleep 1
         echo >&7 $proc_id
     } &

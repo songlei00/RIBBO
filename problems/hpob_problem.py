@@ -1,5 +1,6 @@
 from typing import Union, Optional
 from functools import partial
+from collections import defaultdict
 import os
 try:
     import ujson as json
@@ -90,28 +91,12 @@ class HPOBMetaProblem():
         
     def get_datasets_info(self):
         sample_data = self.dataset.trajectory_list[0]
-        self.best_y = max([
-            t.y.max() for t in self.dataset.trajectory_list
-        ]).item()
         self.seq_len = sample_data.X.shape[0]
         self.x_dim = sample_data.X.shape[1]
         self.y_dim = 1
-        
-        id2info = {}
-        for t in self.dataset.trajectory_list:
-            id = t.metadata["dataset_id"]
-            best_y = t.y.max().item()
-            regret = (self.best_y - t.y).sum().item()
-            if id not in id2info:
-                id2info[id] = {"best_y": [], "regret": []}
-            id2info[id]["best_y"].append(best_y)
-            id2info[id]["regret"].append(regret)
-        for id, d_ in id2info.items():
-            id2info[id] = {
-                "best_y": sum(d_["best_y"])/len(d_["best_y"]), 
-                "regret": sum(d_["regret"])/len(d_["regret"])
-            }
-        self.id2info = id2info
+        self.best_y = self.dataset.best_y
+        self.best_original_y = self.dataset.best_original_y
+        self.id2info = self.dataset.id2info
         
         self.x_low = 0.0
         self.x_high = 1.0
@@ -133,11 +118,33 @@ class HPOBMetaProblem():
         
     def forward(self, X: torch.Tensor):
         assert X.ndim == 2
+        assert (X >= -1 - 1e-6).all() and (X <= 1 + 1e-6).all()
         device = X.device
         X_np = X.cpu().detach().numpy()
         X_np = xgb.DMatrix(self.transform_x(X_np))
         Y = self.bst_surrogate.predict(X_np)
-        return torch.from_numpy(Y).reshape(-1, 1).to(device)
+        normalized_y = self.y_normalize(Y)
+        return torch.from_numpy(Y).reshape(-1, 1).to(device), torch.from_numpy(normalized_y).reshape(-1, 1).to(device)
     
     def get_dataset(self):
         return self.dataset
+
+    def y_normalize(self, y):
+        if self.dataset_id in self.id2info.keys(): # train dataset
+            info = self.id2info[self.dataset_id]
+            min_y, max_y = info['min_y'], info['max_y']
+        else: # test dataset
+            cheat_table = {
+                # ''
+            }
+            if self.dataset_id in cheat_table.keys(): 
+                # normalize by a predefined value
+                min_y = cheat_table[self.dataset_id]['min_y']
+                max_y = cheat_table[self.dataset_id]['max_y']
+            else:
+                # normalize by min_y and max_y in the training dataset
+                min_y = min([self.id2info[dataset_id]['min_y'] for dataset_id in self.id2info])
+                max_y = max([self.id2info[dataset_id]['max_y'] for dataset_id in self.id2info])
+
+        new_y = (y - min_y) / (max_y - min_y + 1e-6)
+        return new_y

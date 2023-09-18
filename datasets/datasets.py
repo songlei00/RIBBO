@@ -1,4 +1,5 @@
 from typing import List
+from collections import defaultdict
 
 import torch
 import numpy as np
@@ -14,11 +15,77 @@ class TrajectoryDataset(Dataset):
         trajectory_list: List[Trajectory],
     ):
         self.trajectory_list = trajectory_list
+        self.id2info = defaultdict(dict)
+
+        # calculate min_y and max_y for each dataset
+        id2minmax = self.get_dataset_minmax()
+        for k, v in id2minmax.items():
+            self.id2info[k].update(v)
+
+        self.best_original_y = torch.max(
+            torch.tensor([torch.max(trajectory.y) for trajectory in self.trajectory_list])
+        ) 
+
+        # normalize y for each dataset
+        for t in self.trajectory_list:
+            info = self.id2info[t.metadata['dataset_id']]
+            max_y, min_y = info['max_y'], info['min_y']
+            t.y = (t.y - min_y) / (max_y - min_y + 1e-6)
+
+        # best_y should be calculated by the normalized y
         self.best_y = torch.max(
             torch.tensor([torch.max(trajectory.y) for trajectory in self.trajectory_list])
-        )
+        ) 
+
+        # calculate average best_y and regret using the normalized y
+        id2average = self.get_dataset_average()
+        for k, v in id2average.items():
+            self.id2info[k].update(v)
+
         self.set_regrets()
         self.input_seq_len = None
+
+    def get_dataset_minmax(self):
+        dataset_id2info = defaultdict(dict)
+
+        # group the trajectory by dataset_id
+        dataset_id2trajectory = defaultdict(list)
+        for t in self.trajectory_list:
+            dataset_id = t.metadata['dataset_id']
+            dataset_id2trajectory[dataset_id].append(t)
+
+        # calculate min_y and max_y for each dataset_id
+        for dataset_id in dataset_id2trajectory:
+            max_y = torch.max(
+                torch.tensor([t.y.max() for t in dataset_id2trajectory[dataset_id]])
+            ).item()
+            min_y = torch.min(
+                torch.tensor([t.y.min() for t in dataset_id2trajectory[dataset_id]])
+            ).item()
+            dataset_id2info[dataset_id]['max_y'] = max_y 
+            dataset_id2info[dataset_id]['min_y'] = min_y
+
+        return dataset_id2info
+
+    def get_dataset_average(self):
+        dataset_id2info = defaultdict(dict)
+
+        # group the trajectory by dataset_id
+        dataset_id2trajectory = defaultdict(list)
+        for t in self.trajectory_list:
+            dataset_id = t.metadata['dataset_id']
+            dataset_id2trajectory[dataset_id].append(t)
+
+        # calculate best_y and regret
+        for dataset_id in dataset_id2trajectory:
+            dataset_id2info[dataset_id]['average_best_y'] = torch.mean(
+                torch.tensor([t.y.max().item() for t in dataset_id2trajectory[dataset_id]])
+            ).item()
+            dataset_id2info[dataset_id]['average_regret'] = torch.mean(
+                torch.tensor([(self.best_y - t.y).sum().item() for t in dataset_id2trajectory[dataset_id]])
+            ).item()
+
+        return dataset_id2info
 
     def __getitem__(self, idx):
         assert self.input_seq_len is not None, "input seq len must be set before iterating over the dataset"

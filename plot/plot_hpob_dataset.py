@@ -19,8 +19,8 @@ def xy_fn(trajectory):
     best_y = [y[0]]
     for i in y[1: ]:
         best_y.append(max(best_y[-1], i))
-    # return list(range(len(y))), best_y
-    return list(range(len(y))), y
+    return list(range(len(y))), best_y
+    # return list(range(len(y))), y
 
 def split_fn(trajectory):
     """
@@ -56,6 +56,6 @@ for search_space_id in meta_data:
         ncols=5,
         shaded_std=False,
     )
-    # save_name = '{}.png'.format(search_space_id)
-    save_name = '{}_y.png'.format(search_space_id)
+    save_name = '{}.png'.format(search_space_id)
+    # save_name = '{}_y.png'.format(search_space_id)
     plt.savefig(os.path.join(save_dir, save_name))
