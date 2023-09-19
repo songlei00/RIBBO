@@ -184,24 +184,24 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
     for id in datasets:
         problem.reset_task(id)
         designer.reset(eval_episode, init_regret)
-        last_x, last_y, last_regrets = None, None, init_regret
+        last_x, last_y, last_normalized_y, last_normalized_regrets = None, None, None, init_regret
         this_y = np.zeros([eval_episode, problem.seq_len, 1])
         this_normalized_y = np.zeros([eval_episode, problem.seq_len, 1])
         for i in range(problem.seq_len):
             last_x = designer.suggest(
                 last_x=last_x, 
-                last_y=last_y, 
-                last_regrets=last_regrets, 
+                last_y=last_normalized_y, 
+                last_regrets=last_normalized_regrets, 
                 determinisitc=True
             )
             last_y, last_normalized_y = problem.forward(last_x)
-            last_regrets = last_regrets - (problem.best_y - last_y)
+            last_normalized_regrets = last_normalized_regrets - (problem.best_y - last_normalized_y)
             this_y[:, i] = last_y.detach().cpu().numpy()
             this_normalized_y[:, i] = last_normalized_y.detach().cpu().numpy()
         id2y[id] = this_y
         id2normalized_y[id] = this_normalized_y
         
-    metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, problem.best_original_y, problem.best_y)
+    metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, problem.best_original_y, problem.best_y, problem.id2info)
     
     designer.train()
     return metrics, trajectory_record

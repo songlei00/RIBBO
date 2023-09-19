@@ -15,11 +15,13 @@ class TrajectoryDataset(Dataset):
         trajectory_list: List[Trajectory],
     ):
         self.trajectory_list = trajectory_list
-        self.id2info = defaultdict(dict)
+        self.id2info = dict()
 
         # calculate min_y and max_y for each dataset
         id2minmax = self.get_dataset_minmax()
         for k, v in id2minmax.items():
+            if self.id2info.get(k, None) is None:
+                self.id2info[k] = dict()
             self.id2info[k].update(v)
 
         self.best_original_y = torch.max(
@@ -33,6 +35,12 @@ class TrajectoryDataset(Dataset):
             t.y = (t.y - min_y) / (max_y - min_y + 1e-6)
 
         # best_y should be calculated by the normalized y
+        id2best_normalized_y = self.get_dataset_best_y()
+        for k, v in id2best_normalized_y.items():
+            if self.id2info.get(k, None) is None:
+                self.id2info[k] = dict()
+            self.id2info[k].update(v)
+
         self.best_y = torch.max(
             torch.tensor([torch.max(trajectory.y) for trajectory in self.trajectory_list])
         ) 
@@ -40,10 +48,29 @@ class TrajectoryDataset(Dataset):
         # calculate average best_y and regret using the normalized y
         id2average = self.get_dataset_average()
         for k, v in id2average.items():
+            if self.id2info.get(k, None) is None:
+                self.id2info[k] = dict()
             self.id2info[k].update(v)
 
         self.set_regrets()
         self.input_seq_len = None
+
+    def get_dataset_best_y(self):
+        dataset_id2info = defaultdict(dict)
+
+        # group the trajectory by dataset_id
+        dataset_id2trajectory = defaultdict(list)
+        for t in self.trajectory_list:
+            dataset_id = t.metadata['dataset_id']
+            dataset_id2trajectory[dataset_id].append(t)
+
+        for dataset_id in dataset_id2trajectory:
+            best_y = torch.max(
+                torch.tensor([t.y.max() for t in dataset_id2trajectory[dataset_id]])
+            )
+            dataset_id2info[dataset_id]['best_normalized_y'] = best_y
+
+        return dataset_id2info
 
     def get_dataset_minmax(self):
         dataset_id2info = defaultdict(dict)

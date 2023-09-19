@@ -14,7 +14,7 @@ def get_vector_statistics(v):
     return ret
 
 
-def calculate_metrics(id2y, id2normalized_y, best_original_y, best_y):
+def calculate_metrics(id2y, id2normalized_y, best_original_y, best_y, id2info):
     metrics = {}
     
     # best y: max over sequence, average over eval num
@@ -34,13 +34,15 @@ def calculate_metrics(id2y, id2normalized_y, best_original_y, best_y):
     # regret: (best_y - y), sum over sequence, average over eval num
     regret_sum, regret_normalized_sum = 0, 0
     for id in id2y:
-        regret_this = (best_original_y - id2y[id]).sum(axis=1).mean()
+        best_original_y_this = best_original_y if id2info.get(id, None) is None else id2info[id]['max_y']
+        regret_this = (best_original_y_this - id2y[id]).sum(axis=1).mean()
         regret_sum += regret_this
         metrics["regret_"+id] = regret_this
 
-        regret_normalized_this = (best_y - id2normalized_y[id]).sum(axis=1).mean()
-        metrics['regret_normalized_'+id] = best_normalized_y_this
-        regret_normalized_sum = regret_normalized_this
+        best_y_this = best_y if id2info.get(id, None) is None else id2info[id]['best_normalized_y']
+        regret_normalized_this = (best_y_this - id2normalized_y[id]).sum(axis=1).mean()
+        regret_normalized_sum += regret_normalized_this
+        metrics['regret_normalized_'+id] = regret_normalized_this
     metrics["regret_agg"] = regret_sum / len(id2y)
     metrics['regret_normalized_agg'+id] = regret_normalized_sum / len(id2y)
 

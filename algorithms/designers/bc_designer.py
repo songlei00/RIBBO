@@ -186,7 +186,7 @@ def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, d
         for i in range(problem.seq_len):
             last_x = designer.suggest(
                 last_x=last_x, 
-                last_y=last_y, 
+                last_y=last_normalized_y, 
                 determinisitc=True
             )
             last_y, last_normalized_y = problem.forward(last_x)
@@ -195,7 +195,7 @@ def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, d
         id2y[id] = this_y
         id2normalized_y[id] = this_normalized_y
     
-    metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, problem.best_original_y, problem.best_y)
+    metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, problem.best_original_y, problem.best_y, problem.id2info)
     
     designer.train()
     return metrics, trajectory_record
