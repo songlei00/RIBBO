@@ -11,6 +11,7 @@ from algorithms.designers.dt_designer import DecisionTransformerDesigner, evalua
 from algorithms.modules.dt import DecisionTransformer
 from problems.hpob_problem import HPOBMetaProblem
 from datasets.datasets import TrajectoryDataset
+from algorithms.utils import log_rollout
 
 designers = [
     # 'Random',
@@ -115,17 +116,9 @@ for i_epoch in trange(args.num_epoch):
         logger.log_scalars("", train_metrics, step=i_epoch)
     
 
-# final rollout for train datasets
+# final rollout
 for mode, datasets in zip(["train", "test"], [args.train_datasets, args.test_datasets]):
     for init_regret in args.init_regrets:
         print(f"Evaluating final rollout on {mode} datasets {datasets} with regret {init_regret} ...")
         _, eval_records = evaluate_decision_transformer_designer(problem, designer, datasets, args.eval_episodes, init_regret)
-        for key in eval_records:
-            id = key.split("_")[-1]
-            ys = [y.item() for y in eval_records[key]]
-            best_ys = [ys[0]]
-            for y in ys[1: ]:
-                best_ys.append(max(best_ys[-1], y))
-
-            for i in range(len(ys)):
-                logger.log_scalars('rollout_{}_regret={}'.format(mode, str(init_regret)), {'best_y_'+id: best_ys[i], 'y_'+id: ys[i]}, i)
+        log_rollout(logger, 'rollout_{}_regret={}'.format(mode, init_regret), eval_records)

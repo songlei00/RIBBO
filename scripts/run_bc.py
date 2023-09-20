@@ -113,16 +113,7 @@ for i_epoch in trange(args.num_epoch):
     if i_epoch % args.log_interval == 0:
         logger.log_scalars("", train_metrics, step=i_epoch)
     
-_, test_trajectory_record = evaluate_bc_transformer_designer(problem, designer, args.test_datasets, args.eval_episodes)
-_, train_trajectory_record = evaluate_bc_transformer_designer(problem, designer, args.train_datasets, args.eval_episodes)
-for mode, record in zip(['test', 'train'], [test_trajectory_record, train_trajectory_record]):
-    for key in record:
-        id = key.split('_')[-1]
-
-        ys = [y.item() for y in record[key]]
-        best_ys = [ys[0]]
-        for y in ys[1: ]:
-            best_ys.append(max(best_ys[-1], y))
-
-        for i in range(len(record[key])):
-            logger.log_scalars('final rollout of {}'.format(mode), {'best_y_'+id: best_ys[i], 'y_'+id: ys[i]}, i)
+# final rollout
+for mode, datasets in zip(['train', 'test'], [args.train_datasets, args.test_datasets]):
+    _, eval_records = evaluate_bc_transformer_designer(problem, designer, datasets, args.eval_episodes)
+    log_rollout(logger, 'rollout_{}'.format(mode), eval_records)

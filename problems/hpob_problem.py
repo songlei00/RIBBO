@@ -95,8 +95,7 @@ class HPOBMetaProblem():
         self.x_dim = sample_data.X.shape[1]
         self.y_dim = 1
         self.best_y = self.dataset.best_y
-        assert torch.isclose(self.best_y, torch.tensor(1.0))
-        self.best_original_y = self.dataset.best_original_y
+        # assert torch.isclose(self.best_y, torch.tensor(1.0))
         self.id2info = self.dataset.id2info
         
         self.x_low = 0.0

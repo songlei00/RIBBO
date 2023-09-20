@@ -44,7 +44,7 @@ def calculate_metrics(id2y, id2normalized_y, best_original_y, best_y, id2info):
         regret_normalized_sum += regret_normalized_this
         metrics['regret_normalized_'+id] = regret_normalized_this
     metrics["regret_agg"] = regret_sum / len(id2y)
-    metrics['regret_normalized_agg'+id] = regret_normalized_sum / len(id2y)
+    metrics['regret_normalized_agg'] = regret_normalized_sum / len(id2y)
 
     trajectory_record = {}
 
@@ -56,3 +56,14 @@ def calculate_metrics(id2y, id2normalized_y, best_original_y, best_y, id2info):
         trajectory_record['mean_normalized_y_'+id] = mean_normalized_y
 
     return metrics, trajectory_record
+
+
+def log_rollout(logger, tag, trajectory_record):
+    for key in trajectory_record:
+        ys = [y.item() for y in eval_records[key]]
+        best_ys = [ys[0]]
+        for y in ys[1: ]:
+            best_ys.append(max(best_ys[-1], y))
+
+        for i in range(len(ys)):
+            logger.log_scalars(tag, {'best_'+key: best_ys[i], key: ys[i]}, i)
