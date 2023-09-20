@@ -13,7 +13,7 @@ import torch
 from torch import Tensor
 
 from problems.base import ProblemBase
-from datasets.load_datasets import load_hpob_dataset
+from datasets.datasets import TrajectoryDataset
 
 
 def load_summary(root_dir):
@@ -74,32 +74,25 @@ class HPOBMetaProblem():
         self, 
         search_space_id: str, 
         root_dir: str, 
+        cache_dir: str, 
+        input_seq_len: int=300, 
+        normalize_method: str="random"
     ):
         assert search_space_id.isnumeric()
-        self.root_dir = root_dir
         self.search_space_id = search_space_id
+        self.root_dir = root_dir
+        self.input_seq_len = input_seq_len
 
         self.bst_surrogate = xgb.Booster()
         self.name = 'HPOB_{}'.format(search_space_id)
-        self.dataset = load_hpob_dataset(
-            search_space_id=search_space_id
+        self.dataset = TrajectoryDataset(
+            cache_dir=cache_dir, 
+            input_seq_len=input_seq_len, 
+            normalize_method=normalize_method
         )
-        self.get_datasets_info()
-        
+
         # transform the dataset x
         self.dataset.transform_x(partial(self.transform_x, reverse=True))
-        
-    def get_datasets_info(self):
-        sample_data = self.dataset.trajectory_list[0]
-        self.seq_len = sample_data.X.shape[0]
-        self.x_dim = sample_data.X.shape[1]
-        self.y_dim = 1
-        self.best_y = self.dataset.best_y
-        # assert torch.isclose(self.best_y, torch.tensor(1.0))
-        self.id2info = self.dataset.id2info
-        
-        self.x_low = 0.0
-        self.x_high = 1.0
         
     def transform_x(self, x, reverse: bool=False):
         if reverse:
@@ -122,29 +115,27 @@ class HPOBMetaProblem():
         device = X.device
         X_np = X.cpu().detach().numpy()
         X_np = xgb.DMatrix(self.transform_x(X_np))
-        Y = self.bst_surrogate.predict(X_np)
-        normalized_y = self.y_normalize(Y)
-        return torch.from_numpy(Y).reshape(-1, 1).to(device), torch.from_numpy(normalized_y).reshape(-1, 1).to(device)
+        y = self.bst_surrogate.predict(X_np)
+        normalized_y = self.dataset_normalize(y)
+        return torch.from_numpy(y).reshape(-1, 1).to(device), torch.from_numpy(normalized_y).reshape(-1, 1).to(device)
     
     def get_dataset(self):
         return self.dataset
 
-    def y_normalize(self, y):
-        if self.dataset_id in self.id2info.keys(): # train dataset
+    def dataset_normalize(self, y):
+        if self.dataset_id in self.dataset.global_info["train_datasets"]:
             info = self.id2info[self.dataset_id]
-            min_y, max_y = info['min_y'], info['max_y']
-        else: # test dataset
+            y_max, y_min = info["y_max"], info["y_min"]
+        else:
             cheat_table = {
-                # ''
+                
             }
-            if self.dataset_id in cheat_table.keys(): 
-                # normalize by a predefined value
-                min_y = cheat_table[self.dataset_id]['min_y']
-                max_y = cheat_table[self.dataset_id]['max_y']
+            if self.dataset_id in cheat_table:
+                y_max = cheat_table[self.dataset_id]["y_max"]
+                y_min = cheat_table[self.dataset_id]["y_min"]
             else:
-                # normalize by min_y and max_y in the training dataset
-                min_y = min([self.id2info[dataset_id]['min_y'] for dataset_id in self.id2info])
-                max_y = max([self.id2info[dataset_id]['max_y'] for dataset_id in self.id2info])
-
-        new_y = (y - min_y) / (max_y - min_y + 1e-6)
-        return new_y
+                y_max = self.dataset.global_info["y_max_mean"]
+                y_min = self.dataset.global_info["y_min_mean"]
+        normalized_y = (y-y_min) / (y_max-y_min+1e-6)
+        return normalized_y
+        

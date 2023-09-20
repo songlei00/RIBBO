@@ -11,6 +11,7 @@ from algorithms.designers.bc_designer import BCTransformerDesigner, evaluate_bc_
 from algorithms.modules.bc import BCTransformer
 from problems.hpob_problem import HPOBMetaProblem
 from datasets.datasets import TrajectoryDataset
+from algorithms.utils import log_rollout
 
 designers = [
     # 'Random',
@@ -49,14 +50,11 @@ setup(args, logger)
 problem = HPOBMetaProblem(
     search_space_id=args.id, 
     root_dir=args.hpob_root_dir, 
+    cache_dir=args.cache_dir, 
+    input_seq_len=args.input_seq_len, 
+    normalize_method=args.normalize_method
 )
 dataset = problem.get_dataset()
-# dataset = filter_designer(dataset)
-dataset.set_input_seq_len(args.input_seq_len)
-
-logger.info('dataset length: {}'.format(len(dataset)))
-logger.info('x dim: {}'.format(problem.x_dim))
-logger.info(problem.id2info)
 
 transformer = BCTransformer(
     x_dim=problem.x_dim, 

@@ -9,6 +9,7 @@ id = "6767"
 x_type = "stochastic"
 y_loss_coeff = 0.0
 mix_method = "concat"
+normalize_method = "random"
 
 embed_dim = 256
 num_layers = 4
@@ -29,7 +30,8 @@ eval_interval = 20
 log_interval = 1
 eval_episodes = 1
 
-hpob_root_dir="./data/downloaded_data/hpob/"
+hpob_root_dir = "./data/downloaded_data/hpob/"
+cache_dir = "./cache"
 
 class optimizer_args(NameSpace):
     lr = 1e-4
