@@ -109,14 +109,14 @@ class TrajectoryDataset(Dataset):
     
     def __getitem__(self, idx):
         trajectory = self.trajectory_list[idx]
-        best_y = self.id2info[trajectory.metadata['dataset_id']]['best_y']
+        # best_y = self.id2info[trajectory.metadata['dataset_id']]['best_y']
         traj_len = trajectory.X.shape[0]
         start_idx = np.random.choice(traj_len+1-self.input_seq_len)
         
         timesteps = torch.arange(start_idx, start_idx+self.input_seq_len)
         
         y, regrets = self.normalize_y_and_regrets(
-            trajectory["metadata"]["dataset_id"], 
+            trajectory.metadata["dataset_id"], 
             trajectory.y, 
             trajectory.regrets
         )
@@ -129,10 +129,16 @@ class TrajectoryDataset(Dataset):
         }
         
     def normalize_y_and_regrets(self, id, y, regrets):
+        y = y.unsqueeze(-1)
+        regrets = regrets.unsqueeze(-1)
         if self.normalize_method == "none":
             return y, regrets
         elif self.normalize_method == "random":
-            raise NotImplementedError
+            dataset_y_min, dataset_y_max = self.id2info[id]["y_min"], self.id2info[id]["y_max"]
+            span = (dataset_y_max - dataset_y_min - 1e-6) / 2.0
+            l = np.random.uniform(low=dataset_y_min-span/2, high=dataset_y_min+span/2)
+            h = np.random.uniform(low=dataset_y_max-span/2, high=dataset_y_max+span/2)
+            return (y-l) / (h-l), regrets / (h-l)
         elif self.normalize_method == "dataset": 
             dataset_y_min, dataset_y_max = self.id2info[id]["y_min"], self.id2info[id]["y_max"]
             return (y - dataset_y_min) / (dataset_y_max - dataset_y_min + 1e-6), regrets / (dataset_y_max - dataset_y_min + 1e-6)

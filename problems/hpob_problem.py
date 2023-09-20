@@ -96,6 +96,14 @@ class HPOBMetaProblem():
 
         # transform the dataset x
         self.dataset.transform_x(partial(self.transform_x, reverse=True))
+
+        self.get_problem_info()
+        
+    def get_problem_info(self):
+        sample_data = self.dataset.trajectory_list[0]
+        self.seq_len = sample_data.X.shape[0]
+        self.x_dim = sample_data.X.shape[1]
+        self.y_dim = 1
         
     def transform_x(self, x, reverse: bool=False):
         if reverse:
@@ -127,7 +135,7 @@ class HPOBMetaProblem():
 
     def dataset_normalize(self, y):
         if self.dataset_id in self.dataset.global_info["train_datasets"]:
-            info = self.id2info[self.dataset_id]
+            info = self.dataset.id2info[self.dataset_id]
             y_max, y_min = info["y_max"], info["y_min"]
         else:
             cheat_table = {
