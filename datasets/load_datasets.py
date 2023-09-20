@@ -2,8 +2,8 @@ import os
 from collections import defaultdict
 import pickle
 import logging
+from functools import partial
 
-from datasets.datasets import TrajectoryDataset
 from datasets.trajectory import Trajectory
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ def load_dataset(base_dir, filter_fn, split_fn):
     return sk2t
 
 
-def load_hpob_dataset(search_space_id: str, update=False):
+def load_hpob_dataset(data_dir, search_space_id):
     def filter_fn(file_path):
         file_name = file_path.split(os.sep)[-1].rstrip('.json')
         curr_designer, curr_search_space_id, _, _ = file_name.split('_')
@@ -78,30 +78,11 @@ def load_hpob_dataset(search_space_id: str, update=False):
             return True
         else:
             return False
-
+    
     def split_fn(file_path):
         file_name = file_path.split(os.sep)[-1].rstrip('.json')
         search_space_id = file_name.split('_')[1]
         return search_space_id
 
-    cache_dir = './cache/hpob/'
-    cache_file_name = search_space_id + '.pkl'
-    cache_path = os.path.join(cache_dir, cache_file_name)
-    if not os.path.exists(cache_path) or update:
-        base_dir = './data/generated_data/hpob'
-        sp2t = load_dataset(base_dir, filter_fn, split_fn) # searchspace2trajectory
-        dataset = TrajectoryDataset(sp2t[search_space_id])
-        
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
-
-        with open(cache_path, 'wb') as f:
-            pickle.dump(dataset, f)
-        logger.info('Save dataset cache to {}'.format(cache_path))
-    else:
-        with open(cache_path, 'rb') as f:
-            dataset = pickle.load(f)
-        logger.info('Load data set from {}'.format(cache_path))
-
-    return dataset
-
+    sp2t = load_dataset(data_dir, filter_fn, split_fn) # splitkey2trajectory
+    return sp2t[search_space_id]

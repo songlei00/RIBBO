@@ -32,6 +32,8 @@ eval_episodes = 1
 init_regrets = [10, 20, 30]
 
 hpob_root_dir="./data/downloaded_data/hpob/"
+data_dir = './data/generated_data/hpob'
+cache_dir = "./cache/hpob"
 
 class optimizer_args(NameSpace):
     lr = 1e-4

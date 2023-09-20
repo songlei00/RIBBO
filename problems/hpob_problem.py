@@ -74,6 +74,7 @@ class HPOBMetaProblem():
         self, 
         search_space_id: str, 
         root_dir: str, 
+        data_dir: str,
         cache_dir: str, 
         input_seq_len: int=300, 
         normalize_method: str="random"
@@ -86,6 +87,8 @@ class HPOBMetaProblem():
         self.bst_surrogate = xgb.Booster()
         self.name = 'HPOB_{}'.format(search_space_id)
         self.dataset = TrajectoryDataset(
+            search_space_id=search_space_id,
+            data_dir=data_dir,
             cache_dir=cache_dir, 
             input_seq_len=input_seq_len, 
             normalize_method=normalize_method

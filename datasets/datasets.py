@@ -1,3 +1,5 @@
+import os
+import pickle
 from typing import List, Optional
 from collections import defaultdict
 
@@ -7,18 +9,30 @@ from torch.utils.data import Dataset, IterableDataset
 
 from datasets.trajectory import Trajectory
 from datasets.metrics import metric_regret
+from datasets.load_datasets import load_hpob_dataset
 
 
 class TrajectoryDataset(Dataset):
     def __init__(
         self, 
-        cache_dir: Optional[str]=None, 
+        search_space_id: str,
+        data_dir: str,
+        cache_dir: str, 
         input_seq_len: int=300, 
-        normalize_method: str="random"  # choices are ["random", "dataset", "none"]
+        normalize_method: str="random",  # choices are ["random", "dataset", "none"]
+        update: bool = False,
     ) -> None:
-        if cache_dir is None:
-            raise NotImplementedError("Should provide the path to the dataset cache")
-        self.load_cache(cache_dir)
+        cache_file = search_space_id + '.pkl'
+        cache_path = os.path.join(cache_dir, cache_file)
+
+        if not os.path.exists(cache_path) or update:
+            if not os.path.exists(cache_dir):
+                os.makedirs(cache_dir)
+            trajectory_list = self.create_cache(search_space_id, data_dir, cache_path)
+        else:
+            trajectory_list = self.load_cache(cache_path)
+            assert isinstance(trajectory_list, list)
+        self.trajectory_list = trajectory_list
         
         # get raw metrics
         self.id2info, self.global_info = self.get_dataset_info()
@@ -27,9 +41,21 @@ class TrajectoryDataset(Dataset):
         self.set_regrets()
         self.input_seq_len = input_seq_len
         self.normalize_method = normalize_method
+
+    def create_cache(self, search_space_id, data_dir, cache_path):
+        trajectory_list = load_hpob_dataset(data_dir, search_space_id)
         
-    def load_cache(self, cache_dir):
-        raise NotImplementedError
+        with open(cache_path, 'wb') as f:
+            pickle.dump(trajectory_list, f)
+        print('Save trajectory to {}'.format(cache_path))
+
+        return trajectory_list
+        
+    def load_cache(self, cache_path):
+        with open(cache_path, 'rb') as f:
+            trajectory_list = pickle.load(f)
+        print('Load trajectory from {}'.format(cache_path))
+        return trajectory_list
 
     def get_dataset_info(self):
         id2info = defaultdict(dict)
@@ -53,6 +79,7 @@ class TrajectoryDataset(Dataset):
         # global info
         x_min = min(t.X.min() for t in self.trajectory_list).item()
         x_max = max(t.X.max() for t in self.trajectory_list).item()
+        y_min = min([id2info[id]["y_min"] for id in id2info])
         y_max = max([id2info[id]["y_max"] for id in id2info])
         y_max_mean = sum([id2info[id]["y_max"] for id in id2info]) / len(id2info)
         y_min_mean = sum([id2info[id]["y_min"] for id in id2info]) / len(id2info)

@@ -50,6 +50,7 @@ setup(args, logger)
 problem = HPOBMetaProblem(
     search_space_id=args.id, 
     root_dir=args.hpob_root_dir, 
+    data_dir=args.data_dir,
     cache_dir=args.cache_dir, 
     input_seq_len=args.input_seq_len, 
     normalize_method=args.normalize_method

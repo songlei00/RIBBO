@@ -31,7 +31,8 @@ log_interval = 1
 eval_episodes = 1
 
 hpob_root_dir = "./data/downloaded_data/hpob/"
-cache_dir = "./cache"
+data_dir = './data/generated_data/hpob'
+cache_dir = "./cache/hpob"
 
 class optimizer_args(NameSpace):
     lr = 1e-4
