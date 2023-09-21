@@ -57,11 +57,9 @@ problem = HPOBMetaProblem(
 )
 dataset = problem.get_dataset()
 # dataset = filter_designer(dataset)
-dataset.set_input_seq_len(args.input_seq_len)
 
 logger.info('dataset length: {}'.format(len(dataset)))
 logger.info('x dim: {}'.format(problem.x_dim))
-logger.info(problem.id2info)
 
 transformer = DecisionTransformer(
     x_dim=problem.x_dim, 

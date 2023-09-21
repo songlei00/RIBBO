@@ -9,6 +9,7 @@ id = "6767"
 x_type = "stochastic"
 y_loss_coeff = 0.0
 mix_method = "concat"
+normalize_method = "random"
 
 embed_dim = 256
 num_layers = 4
@@ -29,9 +30,9 @@ eval_interval = 20
 log_interval = 1
 eval_episodes = 1
 
-init_regrets = [10, 20, 30]
+init_regrets = [0] 
 
-hpob_root_dir="./data/downloaded_data/hpob/"
+hpob_root_dir = "./data/downloaded_data/hpob/"
 data_dir = './data/generated_data/hpob'
 cache_dir = "./cache/hpob"
 

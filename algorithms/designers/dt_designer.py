@@ -179,7 +179,6 @@ class DecisionTransformerDesigner(BaseDesigner):
 def evaluate_decision_transformer_designer(problem, designer: DecisionTransformerDesigner, datasets, eval_episode, init_regret):
     print(f"evaluating on {datasets} ...")
     designer.eval()
-    all_id_y = {}
     id2y, id2normalized_y = {}, {}
     for id in datasets:
         problem.reset_task(id)
@@ -195,13 +194,13 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
                 determinisitc=True
             )
             last_y, last_normalized_y = problem.forward(last_x)
-            last_normalized_regrets = last_normalized_regrets - (problem.best_y - last_normalized_y)
+            last_normalized_regrets = last_normalized_regrets - (1.0 - last_normalized_y)  # we have set the best normalized y to 1.0
             this_y[:, i] = last_y.detach().cpu().numpy()
             this_normalized_y[:, i] = last_normalized_y.detach().cpu().numpy()
         id2y[id] = this_y
         id2normalized_y[id] = this_normalized_y
         
-    metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, problem.best_original_y, problem.best_y, problem.id2info)
+    metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, problem.dataset.id2info, problem.dataset.global_info)
     
     designer.train()
     return metrics, trajectory_record

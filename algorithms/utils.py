@@ -50,9 +50,9 @@ def calculate_metrics(id2y, id2normalized_y, id2info, global_info):
 
     # mean y, mean normalized y
     for id in id2normalized_y:
-        # mean_y = id2y[id].mean(axis=0)
+        mean_y = id2y[id].mean(axis=0)
         mean_normalized_y = id2normalized_y[id].mean(axis=0)
-        # trajectory_record['mean_y_' + id] = mean_y
+        trajectory_record['y_' + id] = mean_y
         trajectory_record['normalized_y_'+id] = mean_normalized_y
 
     return metrics, trajectory_record
