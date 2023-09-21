@@ -78,7 +78,7 @@ class DecisionTransformer(GPT2):
                 inputs = self.pos_encoding(self.input_proj(torch.nn.functional.relu(inputs)), timesteps)
             elif self.mix_method == "add":
                 inputs = x_embedding + y_embedding + regret_embedding
-            inputs = self.pos_encoding(inputs, timesteps)
+                inputs = self.pos_encoding(inputs, timesteps)
         return inputs, key_padding_mask
         
     def decode(self, out):
