@@ -56,6 +56,7 @@ class DecisionTransformerDesigner(BaseDesigner):
                 input_dim=embed_dim, 
                 output_dim=x_dim, 
                 reparameterize=False, 
+                conditioned_logstd=False, 
                 hidden_dims=[embed_dim, ]
             )
         else:
@@ -73,8 +74,10 @@ class DecisionTransformerDesigner(BaseDesigner):
     def configure_optimizers(self, lr, weight_decay, betas, warmup_steps):
         decay, no_decay = self.transformer.configure_params()
         decay_parameters = [*decay, *self.x_head.parameters()]
+        self.params = [*decay, *no_decay, *self.x_head.parameters()]
         if self.y_loss_coeff:
             decay_parameters.extend([*self.y_head.parameters()])
+            self.params.extend([*self.y_head.parameters()])
         self.optim = torch.optim.AdamW([
             {"params": decay_parameters, "weight_decay": weight_decay}, 
             {"params":  no_decay, "weight_decay": 0.0}
@@ -164,7 +167,7 @@ class DecisionTransformerDesigner(BaseDesigner):
         self.optim.zero_grad()
         tot_loss.backward()
         if clip_grad is not None:
-            raise NotImplementedError
+            torch.nn.utils.clip_grad_norm_(self.params, clip_grad)
         self.optim.step()
         self.optim_scheduler.step()
         return {

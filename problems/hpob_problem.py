@@ -147,6 +147,7 @@ class HPOBMetaProblem():
             else:
                 y_max = self.dataset.global_info["y_max_mean"]
                 y_min = self.dataset.global_info["y_min_mean"]
-        normalized_y = (y-y_min) / (y_max-y_min+1e-6)
+        scale = max(y_max-y_min+1e-6, 0.3)
+        normalized_y = (y-y_min) / scale
         return normalized_y
         

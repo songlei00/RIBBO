@@ -106,7 +106,6 @@ trainloader = DataLoader(
 for i_epoch in trange(args.num_epoch):
     for i_batch, batch in enumerate(trainloader):
         train_metrics = designer.update(batch, clip_grad=args.clip_grad)
-
     if i_epoch % args.eval_interval == 0:
         for init_regret in args.init_regrets:
             eval_test_metrics, _ = evaluate_decision_transformer_designer(problem, designer, args.test_datasets, args.eval_episodes, init_regret)

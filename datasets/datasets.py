@@ -135,11 +135,13 @@ class TrajectoryDataset(Dataset):
             return y, regrets
         elif self.normalize_method == "random":
             dataset_y_min, dataset_y_max = self.id2info[id]["y_min"], self.id2info[id]["y_max"]
-            span = (dataset_y_max - dataset_y_min - 1e-6) / 2.0
+            span = (dataset_y_max - dataset_y_min + 1e-6) / 2.0
             l = np.random.uniform(low=dataset_y_min-span/2, high=dataset_y_min+span/2)
             h = np.random.uniform(low=dataset_y_max-span/2, high=dataset_y_max+span/2)
-            return (y-l) / (h-l), regrets / (h-l)
+            scale = max(h-l, 0.3)
+            return (y-l) / scale, regrets / scale
         elif self.normalize_method == "dataset": 
             dataset_y_min, dataset_y_max = self.id2info[id]["y_min"], self.id2info[id]["y_max"]
-            return (y - dataset_y_min) / (dataset_y_max - dataset_y_min + 1e-6), regrets / (dataset_y_max - dataset_y_min + 1e-6)
+            scale = max(dataset_y_max - dataset_y_min + 1e-6, 0.3)
+            return (y - dataset_y_min) / scale, regrets / scale
             
