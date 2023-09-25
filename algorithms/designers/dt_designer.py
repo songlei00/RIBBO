@@ -182,13 +182,14 @@ class DecisionTransformerDesigner(BaseDesigner):
 def evaluate_decision_transformer_designer(problem, designer: DecisionTransformerDesigner, datasets, eval_episode, init_regret):
     print(f"evaluating on {datasets} ...")
     designer.eval()
-    id2y, id2normalized_y = {}, {}
+    id2y, id2normalized_y, id2normalized_onestep_regret = {}, {}, {}
     for id in datasets:
         problem.reset_task(id)
         designer.reset(eval_episode, init_regret)
         last_x, last_y, last_normalized_y, last_normalized_regrets = None, None, None, init_regret
         this_y = np.zeros([eval_episode, problem.seq_len, 1])
         this_normalized_y = np.zeros([eval_episode, problem.seq_len, 1])
+        this_normalized_onestep_regret = np.zeros([eval_episode, problem.seq_len, 1])
         for i in range(problem.seq_len):
             last_x = designer.suggest(
                 last_x=last_x, 
@@ -196,14 +197,19 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
                 last_regrets=last_normalized_regrets, 
                 determinisitc=True
             )
-            last_y, last_normalized_y = problem.forward(last_x)
-            last_normalized_regrets = last_normalized_regrets - (1.0 - last_normalized_y)  # we have set the best normalized y to 1.0
+            last_normalized_y, info = problem.forward(last_x)
+            last_y = info["raw_y"]
+            last_normalized_onestep_regret = info["normalized_onestep_regret"]
+            last_normalized_regrets = last_normalized_regrets - last_normalized_onestep_regret
+
             this_y[:, i] = last_y.detach().cpu().numpy()
             this_normalized_y[:, i] = last_normalized_y.detach().cpu().numpy()
+            this_normalized_onestep_regret[:, i] = last_normalized_onestep_regret.detach().cpu().numpy()
         id2y[id] = this_y
         id2normalized_y[id] = this_normalized_y
+        id2normalized_onestep_regret[id] = this_normalized_onestep_regret
         
-    metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, problem.dataset.id2info, problem.dataset.global_info)
+    metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, id2normalized_onestep_regret)
     
     designer.train()
     return metrics, trajectory_record

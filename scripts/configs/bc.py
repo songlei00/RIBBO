@@ -21,6 +21,7 @@ pos_encoding = "sinusoidal"
 clip_grad = None
 use_abs_timestep = True
 input_seq_len = 300
+scale_clip_range = [0.3, 2.0]
 
 batch_size = 64
 num_workers = 4

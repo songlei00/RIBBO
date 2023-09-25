@@ -14,37 +14,42 @@ def get_vector_statistics(v):
     return ret
 
 
-def calculate_metrics(id2y, id2normalized_y, id2info, global_info):
+def calculate_metrics(id2y, id2normalized_y, id2onestep_normalized_regret):
     metrics = {}
     
     # best y: max over sequence, average over eval num
-    best_y_sum, best_normalized_y_sum = 0, 0
+    best_y_sum, best_normalized_y_sum, normalized_regret_sum = 0, 0, 0
     for id in id2normalized_y:
         best_y_this = id2y[id].max(axis=1).mean()
         metrics["best_y_"+id] = best_y_this
         best_y_sum += best_y_this
 
         best_normalized_y_this = id2normalized_y[id].max(axis=1).mean()
-        metrics['best_normalized_y_'+id] = best_normalized_y_this
+        metrics["best_normalized_y_"+id] = best_normalized_y_this
         best_normalized_y_sum += best_normalized_y_this
+        
+        regret_this = id2onestep_normalized_regret[id].sum(axis=1).mean()
+        metrics["normalized_regret_"+id] = regret_this
+        normalized_regret_sum += regret_this
 
     metrics["best_y_agg"] = best_y_sum / len(id2y)
-    metrics['best_normalized_y_agg'] = best_normalized_y_sum / len(id2normalized_y)
+    metrics["best_normalized_y_agg"] = best_normalized_y_sum / len(id2normalized_y)
+    metrics["normalized_regret_agg"] = normalized_regret_sum / len(id2onestep_normalized_regret)
 
     # regret: (best_y - y), sum over sequence, average over eval num
-    regret_sum, regret_normalized_sum = 0, 0
-    for id in id2normalized_y:
-        best_original_y_this = id2info[id]["y_max"] if id in global_info["train_datasets"] else global_info["y_max_mean"]
-        regret_this = (best_original_y_this - id2y[id]).sum(axis=1).mean()
-        regret_sum += regret_this
-        metrics["regret_"+id] = regret_this
+    # regret_sum, regret_normalized_sum = 0, 0
+    # for id in id2normalized_y:
+        # best_original_y_this = id2info[id]["y_max"] if id in global_info["train_datasets"] else global_info["y_max_mean"]
+        # regret_this = (best_original_y_this - id2y[id]).sum(axis=1).mean()
+        # regret_sum += regret_this
+        # metrics["regret_"+id] = regret_this
 
-        best_y_this = 1.0
-        regret_normalized_this = (best_y_this - id2normalized_y[id]).sum(axis=1).mean()
-        regret_normalized_sum += regret_normalized_this
-        metrics['regret_normalized_'+id] = regret_normalized_this
-    metrics["regret_agg"] = regret_sum / len(id2y)
-    metrics['regret_normalized_agg'] = regret_normalized_sum / len(id2normalized_y)
+        # best_y_this = 1.0
+        # regret_normalized_this = (best_y_this - id2normalized_y[id]).sum(axis=1).mean()
+        # regret_normalized_sum += regret_normalized_this
+        # metrics['regret_normalized_'+id] = regret_normalized_this
+    # metrics["regret_agg"] = regret_sum / len(id2y)
+    # metrics['regret_normalized_agg'] = regret_normalized_sum / len(id2normalized_y)
 
     trajectory_record = {}
 

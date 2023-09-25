@@ -5,6 +5,7 @@ from collections import defaultdict
 
 import torch
 import numpy as np
+from typing import List, Optional
 from torch.utils.data import Dataset, IterableDataset
 
 from datasets.trajectory import Trajectory
@@ -20,6 +21,7 @@ class TrajectoryDataset(Dataset):
         cache_dir: str, 
         input_seq_len: int=300, 
         normalize_method: str="random",  # choices are ["random", "dataset", "none"]
+        scale_clip_range: Optional[List[float]]=None, 
         update: bool = False,
     ) -> None:
         cache_file = search_space_id + '.pkl'
@@ -41,6 +43,7 @@ class TrajectoryDataset(Dataset):
         self.set_regrets()
         self.input_seq_len = input_seq_len
         self.normalize_method = normalize_method
+        self.scale_clip_range = scale_clip_range
 
     def create_cache(self, search_space_id, data_dir, cache_path):
         trajectory_list = load_hpob_dataset(data_dir, search_space_id)
@@ -122,15 +125,13 @@ class TrajectoryDataset(Dataset):
         )
         return {
             "x": trajectory.X[start_idx:start_idx+self.input_seq_len], 
-            "y": y[start_idx:start_idx+self.input_seq_len], 
-            "regrets": regrets[start_idx:start_idx+self.input_seq_len], 
+            "y": y[start_idx:start_idx+self.input_seq_len].unsqueeze(-1), 
+            "regrets": regrets[start_idx:start_idx+self.input_seq_len].unsqueeze(-1), 
             "timesteps": timesteps, 
             "masks": torch.ones_like(timesteps).float()
         }
         
     def normalize_y_and_regrets(self, id, y, regrets):
-        y = y.unsqueeze(-1)
-        regrets = regrets.unsqueeze(-1)
         if self.normalize_method == "none":
             return y, regrets
         elif self.normalize_method == "random":
@@ -138,10 +139,14 @@ class TrajectoryDataset(Dataset):
             span = (dataset_y_max - dataset_y_min + 1e-6) / 2.0
             l = np.random.uniform(low=dataset_y_min-span/2, high=dataset_y_min+span/2)
             h = np.random.uniform(low=dataset_y_max-span/2, high=dataset_y_max+span/2)
-            scale = max(h-l, 0.3)
+            scale = h-l
+            if self.scale_clip_range is not None:
+                scale = np.clip(scale, self.scale_clip_range[0], self.scale_clip_range[1])
             return (y-l) / scale, regrets / scale
         elif self.normalize_method == "dataset": 
             dataset_y_min, dataset_y_max = self.id2info[id]["y_min"], self.id2info[id]["y_max"]
-            scale = max(dataset_y_max - dataset_y_min + 1e-6, 0.3)
+            scale = dataset_y_max - dataset_y_min + 1e-6
+            if self.scale_clip_range is not None:
+                scale = np.clip(scale, self.scale_clip_range[0], self.scale_clip_range[1])
             return (y - dataset_y_min) / scale, regrets / scale
             

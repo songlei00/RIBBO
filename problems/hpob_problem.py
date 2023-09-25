@@ -1,4 +1,4 @@
-from typing import Union, Optional
+from typing import Union, Optional, List
 from functools import partial
 from collections import defaultdict
 import os
@@ -14,6 +14,7 @@ from torch import Tensor
 
 from problems.base import ProblemBase
 from datasets.datasets import TrajectoryDataset
+from torch.utils.data import Dataset
 
 
 def load_summary(root_dir):
@@ -77,12 +78,14 @@ class HPOBMetaProblem():
         data_dir: str,
         cache_dir: str, 
         input_seq_len: int=300, 
-        normalize_method: str="random"
+        normalize_method: str="random",
+        scale_clip_range: Optional[List[float]]=None
     ):
         assert search_space_id.isnumeric()
         self.search_space_id = search_space_id
         self.root_dir = root_dir
         self.input_seq_len = input_seq_len
+        self.scale_clip_range = scale_clip_range
 
         self.bst_surrogate = xgb.Booster()
         self.name = 'HPOB_{}'.format(search_space_id)
@@ -91,7 +94,8 @@ class HPOBMetaProblem():
             data_dir=data_dir,
             cache_dir=cache_dir, 
             input_seq_len=input_seq_len, 
-            normalize_method=normalize_method
+            normalize_method=normalize_method, 
+            scale_clip_range=scale_clip_range
         )
 
         # transform the dataset x
@@ -123,17 +127,20 @@ class HPOBMetaProblem():
     def forward(self, X: torch.Tensor):
         assert X.ndim == 2
         assert (X >= -1 - 1e-6).all() and (X <= 1 + 1e-6).all()
-        device = X.device
+        # device = X.device
         X_np = X.cpu().detach().numpy()
         X_np = xgb.DMatrix(self.transform_x(X_np))
         y = self.bst_surrogate.predict(X_np)
-        normalized_y = self.dataset_normalize(y)
-        return torch.from_numpy(y).reshape(-1, 1).to(device), torch.from_numpy(normalized_y).reshape(-1, 1).to(device)
-    
+        normalized_y, normalized_regret = self.get_normalized_y_and_regret(y)
+        return torch.from_numpy(normalized_y).reshape(-1, 1), {
+            "raw_y": torch.from_numpy(y).reshape(-1, 1), 
+            "normalized_onestep_regret": torch.from_numpy(normalized_regret).reshape(-1, 1)
+        }
+
     def get_dataset(self):
         return self.dataset
 
-    def dataset_normalize(self, y):
+    def get_normalized_y_and_regret(self, y):
         if self.dataset_id in self.dataset.global_info["train_datasets"]:
             info = self.dataset.id2info[self.dataset_id]
             y_max, y_min = info["y_max"], info["y_min"]
@@ -147,7 +154,12 @@ class HPOBMetaProblem():
             else:
                 y_max = self.dataset.global_info["y_max_mean"]
                 y_min = self.dataset.global_info["y_min_mean"]
-        scale = max(y_max-y_min+1e-6, 0.3)
-        normalized_y = (y-y_min) / scale
-        return normalized_y
+        unnormalized_y = y
+        unnormalized_regret = y_max - y
+        scale = y_max - y_min + 1e-6
+        if self.scale_clip_range is not None:
+            scale = np.clip(scale, self.scale_clip_range[0], self.scale_clip_range[1])
+        normalized_y = (unnormalized_y-y_min) / scale
+        normalized_regret = (unnormalized_regret) / scale
+        return normalized_y, normalized_regret
         

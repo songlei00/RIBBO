@@ -53,7 +53,8 @@ problem = HPOBMetaProblem(
     data_dir=args.data_dir,
     cache_dir=args.cache_dir, 
     input_seq_len=args.input_seq_len, 
-    normalize_method=args.normalize_method
+    normalize_method=args.normalize_method, 
+    scale_clip_range=args.scale_clip_range
 )
 dataset = problem.get_dataset()
 # dataset = filter_designer(dataset)

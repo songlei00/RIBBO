@@ -31,6 +31,7 @@ log_interval = 1
 eval_episodes = 1
 
 init_regrets = [0] 
+scale_clip_range = [0.3, 2.0]
 
 hpob_root_dir = "./data/downloaded_data/hpob/"
 data_dir = './data/generated_data/hpob'
