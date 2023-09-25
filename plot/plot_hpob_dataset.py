@@ -9,9 +9,10 @@ import matplotlib.pyplot as plt
 
 from plot.plot_dataset import plot_dataset
 from datasets.load_datasets import load_hpob_dataset
+from datasets.datasets import TrajectoryDataset
 
 
-def xy_fn(trajectory):
+def x_besty_fn(trajectory):
     """
     function that converts trajectory into tuple of x and y
     """
@@ -20,7 +21,13 @@ def xy_fn(trajectory):
     for i in y[1: ]:
         best_y.append(max(best_y[-1], i))
     return list(range(len(y))), best_y
-    # return list(range(len(y))), y
+
+def xy_fn(trajectory):
+    """
+    function that converts trajectory into tuple of x and y
+    """
+    y = trajectory.y.tolist()
+    return list(range(len(y))), y
 
 def split_fn(trajectory):
     """
@@ -44,9 +51,14 @@ save_dir = 'plot/hpob'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
-for search_space_id in meta_data:
-    with open('cache/hpob/{}.pkl'.format(search_space_id), 'rb') as f:
-        trajectory_dataset = pickle.load(f)
+# for search_space_id in meta_data:
+for search_space_id in ['6767']:
+    path = 'cache/hpob'
+    trajectory_dataset = TrajectoryDataset(
+        search_space_id,
+        '',
+        path,
+    )
 
     f, axs = plot_dataset(
         trajectory_dataset,
@@ -56,6 +68,16 @@ for search_space_id in meta_data:
         ncols=5,
         shaded_std=False,
     )
+    save_name = '{}_y.png'.format(search_space_id)
+    plt.savefig(os.path.join(save_dir, save_name))
+
+    f, axs = plot_dataset(
+        trajectory_dataset,
+        x_besty_fn,
+        split_fn,
+        group_fn,
+        ncols=5,
+        shaded_std=False,
+    )
     save_name = '{}.png'.format(search_space_id)
-    # save_name = '{}_y.png'.format(search_space_id)
     plt.savefig(os.path.join(save_dir, save_name))

@@ -33,6 +33,25 @@ def filter_designer(dataset):
     logger.info('Filter designers')
     return TrajectoryDataset(ret)
 
+def filter_dataset(dataset):
+    def filter_fn(trajectory):
+        bad_dataset = [
+            '145833',
+            '145855',
+            '14971',
+            '272',
+            '3903',
+            '3918',
+            '7295',
+            '9971',
+            '9978',
+        ]
+        metadata = trajectory.metadata
+        return metadata['dataset_id'] not in bad_dataset
+    ret = list(filter(filter_fn, dataset.trajectory_list))
+    logger.info('Filter dataset')
+    return TrajectoryDataset(ret)
+
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:5]
     args.test_datasets = args.test_datasets[args.id][:5]
@@ -58,6 +77,7 @@ problem = HPOBMetaProblem(
 )
 dataset = problem.get_dataset()
 # dataset = filter_designer(dataset)
+dataset = filter_dataset(dataset)
 
 logger.info('dataset length: {}'.format(len(dataset)))
 logger.info('x dim: {}'.format(problem.x_dim))
