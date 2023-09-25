@@ -23,7 +23,7 @@ use_abs_timestep = True
 input_seq_len = 300
 scale_clip_range = [0.3, 2.0]
 
-batch_size = 64
+batch_size = 256
 num_workers = 4
 
 num_epoch = 1000
@@ -37,7 +37,7 @@ cache_dir = "./cache/hpob"
 
 class optimizer_args(NameSpace):
     lr = 1e-4
-    weight_decay = 1e-4
+    weight_decay = 2e-4
     betas = [0.9, 0.999]
     warmup_steps = 10_000
     
