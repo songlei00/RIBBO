@@ -60,6 +60,9 @@ problem = HPOBMetaProblem(
 dataset = problem.get_dataset()
 # dataset.trajectory_list = filter_dataset(dataset)
 
+logger.info('dataset length: {}'.format(len(dataset)))
+logger.info('x dim: {}'.format(problem.x_dim))
+
 transformer = BCTransformer(
     x_dim=problem.x_dim, 
     y_dim=problem.y_dim, 
