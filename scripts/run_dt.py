@@ -12,26 +12,7 @@ from algorithms.modules.dt import DecisionTransformer
 from problems.hpob_problem import HPOBMetaProblem
 from datasets.datasets import TrajectoryDataset
 from algorithms.utils import log_rollout
-
-designers = [
-    # 'Random',
-    # 'GridSearch',
-    # 'ShuffledGridSearch',
-    # 'RegularizedEvolution',
-    # 'HillClimbing',
-    'EagleStrategy',
-    # 'Vizier',
-    # 'HeBO',
-    # 'CMAES',
-]
-
-def filter_designer(dataset):
-    def filter_fn(trajectory):
-        metadata = trajectory.metadata
-        return metadata['designer'] in designers
-    ret = list(filter(filter_fn, dataset.trajectory_list))
-    logger.info('Filter designers')
-    return TrajectoryDataset(ret)
+from algorithms.data_filter import filter_designer, filter_dataset
 
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:5]
@@ -59,7 +40,7 @@ problem = HPOBMetaProblem(
     prioritize_alpha=args.prioritize_alpha, 
 )
 dataset = problem.get_dataset()
-# dataset = filter_designer(dataset)
+# dataset.trajectory_list = filter_dataset(dataset)
 
 logger.info('dataset length: {}'.format(len(dataset)))
 logger.info('x dim: {}'.format(problem.x_dim))
