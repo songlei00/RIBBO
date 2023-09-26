@@ -13,7 +13,7 @@ from datasets.metrics import metric_regret
 from datasets.load_datasets import load_hpob_dataset
 
 
-class TrajectoryDataset(Dataset):
+class TrajectoryDataset():
     def __init__(
         self, 
         search_space_id: str,
@@ -150,3 +150,63 @@ class TrajectoryDataset(Dataset):
                 scale = np.clip(scale, self.scale_clip_range[0], self.scale_clip_range[1])
             return (y - dataset_y_min) / scale, regrets / scale
             
+
+class TrajectoryDictDataset(TrajectoryDataset, Dataset):
+    def __init__(
+        self, 
+        search_space_id: str, 
+        data_dir: str, 
+        cache_dir: str, 
+        input_seq_len: int=300, 
+        normalize_method: str="random", 
+        scale_clip_range: Optional[List[float]]=None, 
+        update: bool=False, 
+        *args, **kwargs
+    ):
+        TrajectoryDataset.__init__(self, search_space_id, data_dir, cache_dir, input_seq_len, normalize_method, scale_clip_range, update)
+        Dataset.__init__(self)
+        
+    def __getitem__(self, idx):
+        return super().__getitem__(self, idx)
+        
+class TrajectoryIterableDataset(TrajectoryDataset, IterableDataset):
+    def __init__(
+        self, 
+        search_space_id: str, 
+        data_dir: str, 
+        cache_dir: str, 
+        input_seq_len: int=300, 
+        normalize_method: str="random", 
+        scale_clip_range: Optional[List[float]]=None, 
+        update: bool=False, 
+        prioritize: bool=False, 
+        prioritize_alpha: float=1.0, 
+        *args, **kwargs
+    ):
+        TrajectoryDataset.__init__(self, search_space_id, data_dir, cache_dir, input_seq_len, normalize_method, scale_clip_range, update)
+        IterableDataset.__init__(self)
+        
+        self.prioritize = prioritize
+        if prioritize:
+            from UtilsRL.data_structure import SumTree, MinTree
+            self.prioritize_alpha = prioritize_alpha
+            self.sum_tree = SumTree(len(self))
+            self.sum_tree.reset()
+            self.metric_fn = lambda x: np.abs(x) ** prioritize_alpha
+            
+            metric_values = []
+            for i, t in enumerate(self.trajectory_list):
+                dataset_id = t.metadata["dataset_id"]
+                span = self.id2info[dataset_id]["y_max"] - self.id2info[dataset_id]["y_min"]
+                metric_values.append(self.metric_fn(span))
+            metric_values = np.asarray(metric_values, dtype=np.float32)
+            self.sum_tree.add(metric_values)
+            
+    def __iter__(self):
+        while True:
+            if self.prioritize:
+                _target = np.random.random()
+                idx = self.sum_tree.find(_target)[0]
+            else:
+                idx = np.random.choice(len(self))
+            yield super().__getitem__(idx)

@@ -54,7 +54,9 @@ problem = HPOBMetaProblem(
     cache_dir=args.cache_dir, 
     input_seq_len=args.input_seq_len, 
     normalize_method=args.normalize_method, 
-    scale_clip_range=args.scale_clip_range
+    scale_clip_range=args.scale_clip_range, 
+    prioritize=args.prioritize, 
+    prioritize_alpha=args.prioritize_alpha, 
 )
 dataset = problem.get_dataset()
 # dataset = filter_designer(dataset)
@@ -101,11 +103,14 @@ trainloader = DataLoader(
     batch_size=args.batch_size, 
     pin_memory=True, 
     num_workers=args.num_workers, 
-    shuffle=True
+    # shuffle=True
 )
+train_iter = iter(trainloader)
 
 for i_epoch in trange(args.num_epoch):
-    for i_batch, batch in enumerate(trainloader):
+    for i_batch in range(args.step_per_epoch):
+        batch = next(train_iter)
+    # for i_batch, batch in enumerate(trainloader):
         train_metrics = designer.update(batch, clip_grad=args.clip_grad)
     if i_epoch % args.eval_interval == 0:
         for init_regret in args.init_regrets:

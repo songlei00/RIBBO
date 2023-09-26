@@ -10,6 +10,8 @@ x_type = "stochastic"
 y_loss_coeff = 0.0
 mix_method = "concat"
 normalize_method = "random"
+prioritize = True
+prioritize_alpha = 1.0
 
 embed_dim = 256
 num_layers = 4
@@ -26,12 +28,13 @@ batch_size = 256
 num_workers = 4
 
 num_epoch = 1000
+step_per_epoch = 100
 eval_interval = 20
 log_interval = 1
 eval_episodes = 1
 
 init_regrets = [0] 
-scale_clip_range = [0.3, 2.0]
+scale_clip_range = None
 
 hpob_root_dir = "./data/downloaded_data/hpob/"
 data_dir = './data/generated_data/hpob'

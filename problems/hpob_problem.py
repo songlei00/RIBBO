@@ -13,7 +13,8 @@ import torch
 from torch import Tensor
 
 from problems.base import ProblemBase
-from datasets.datasets import TrajectoryDataset
+# from datasets.datasets import TrajectoryDataset
+from datasets.datasets import TrajectoryIterableDataset
 from torch.utils.data import Dataset
 
 
@@ -79,7 +80,9 @@ class HPOBMetaProblem():
         cache_dir: str, 
         input_seq_len: int=300, 
         normalize_method: str="random",
-        scale_clip_range: Optional[List[float]]=None
+        scale_clip_range: Optional[List[float]]=None, 
+        prioritize: bool=False, 
+        prioritize_alpha: float=1.0, 
     ):
         assert search_space_id.isnumeric()
         self.search_space_id = search_space_id
@@ -89,13 +92,16 @@ class HPOBMetaProblem():
 
         self.bst_surrogate = xgb.Booster()
         self.name = 'HPOB_{}'.format(search_space_id)
-        self.dataset = TrajectoryDataset(
+        self.dataset = TrajectoryIterableDataset(
             search_space_id=search_space_id,
             data_dir=data_dir,
             cache_dir=cache_dir, 
             input_seq_len=input_seq_len, 
             normalize_method=normalize_method, 
-            scale_clip_range=scale_clip_range
+            scale_clip_range=scale_clip_range, 
+            prioritize=prioritize, 
+            prioritize_alpha=prioritize_alpha
+            
         )
 
         # transform the dataset x
