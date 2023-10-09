@@ -33,7 +33,7 @@ eval_interval = 20
 log_interval = 1
 eval_episodes = 1
 
-init_regrets = [0] 
+init_regrets = [0, 50, 100] 
 scale_clip_range = None
 
 hpob_root_dir = "./data/downloaded_data/hpob/"

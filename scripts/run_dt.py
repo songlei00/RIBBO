@@ -14,8 +14,8 @@ from datasets.datasets import TrajectoryDataset
 from algorithms.utils import log_rollout
 
 def post_init(args):
-    args.train_datasets = args.train_datasets[args.id][:5]
-    args.test_datasets = args.test_datasets[args.id][:5]
+    args.train_datasets = args.train_datasets[args.id][:15]
+    args.test_datasets = args.test_datasets[args.id][:15]
 
 args = parse_args(post_init=post_init)
 exp_name = "-".join([args.id, "seed"+str(args.seed)])
