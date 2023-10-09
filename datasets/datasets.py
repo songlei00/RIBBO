@@ -11,6 +11,7 @@ from torch.utils.data import Dataset, IterableDataset
 from datasets.trajectory import Trajectory
 from datasets.metrics import metric_regret
 from datasets.load_datasets import load_hpob_dataset
+from algorithms.data_filter import filter_designer, filter_dataset, map_smally
 
 
 class TrajectoryDataset():
@@ -35,6 +36,7 @@ class TrajectoryDataset():
             trajectory_list = self.load_cache(cache_path)
             assert isinstance(trajectory_list, list)
         self.trajectory_list = trajectory_list
+        # self.trajectory_list = map_smally(self.trajectory_list)
         
         # get raw metrics
         self.id2info, self.global_info = self.get_dataset_info()

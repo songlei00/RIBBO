@@ -12,7 +12,6 @@ from algorithms.modules.bc import BCTransformer
 from problems.hpob_problem import HPOBMetaProblem
 from datasets.datasets import TrajectoryDataset
 from algorithms.utils import log_rollout
-from algorithms.data_filter import filter_designer, filter_dataset
 
 designers = [
     # 'Random',
@@ -60,7 +59,6 @@ problem = HPOBMetaProblem(
     prioritize_alpha=args.prioritize_alpha, 
 )
 dataset = problem.get_dataset()
-# dataset.trajectory_list = filter_dataset(dataset)
 
 logger.info('dataset length: {}'.format(len(dataset)))
 logger.info('x dim: {}'.format(problem.x_dim))
