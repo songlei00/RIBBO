@@ -101,13 +101,26 @@ class HPOBMetaProblem():
             scale_clip_range=scale_clip_range, 
             prioritize=prioritize, 
             prioritize_alpha=prioritize_alpha
-            
         )
 
         # transform the dataset x
         self.dataset.transform_x(partial(self.transform_x, reverse=True))
 
         self.get_problem_info()
+
+        # self.cheat_table = {
+        #     '6767': {
+        #         '146065': {'y_max': 0.767839789390564, 'y_min': 0.5621159076690674, 'best_y_average': 0.6984}, 
+        #         '9967': {'y_max': 1.056007981300354, 'y_min': 0.3921036124229431, 'best_y_average': 0.8885}, 
+        #         '9914': {'y_max': 0.9863658547401428, 'y_min': 0.9326095581054688, 'best_y_average': 0.9678}, 
+        #         '146064': {'y_max': 1.0539295673370361, 'y_min': 0.36846235394477844, 'best_y_average': 0.7139}, 
+        #         '145804': {'y_max': 1.0046387910842896, 'y_min': 0.24435663223266602, 'best_y_average': 0.7277}, 
+        #         '31': {'y_max': 0.7703194618225098, 'y_min': 0.6587125658988953, 'best_y_average': 0.7246},
+        #     },
+        # }
+        self.cheat_table = {}
+        if self.search_space_id in self.cheat_table:
+            print('Use cheat table for search space id {}'.format(self.search_space_id))
         
     def get_problem_info(self):
         sample_data = self.dataset.trajectory_list[0]
@@ -151,12 +164,9 @@ class HPOBMetaProblem():
             info = self.dataset.id2info[self.dataset_id]
             y_max, y_min = info["y_max"], info["y_min"]
         else:
-            cheat_table = {
-                
-            }
-            if self.dataset_id in cheat_table:
-                y_max = cheat_table[self.dataset_id]["y_max"]
-                y_min = cheat_table[self.dataset_id]["y_min"]
+            if self.search_space_id in self.cheat_table and self.dataset_id in self.cheat_table[self.search_space_id]:
+                y_max = self.cheat_table[self.search_space_id][self.dataset_id]["y_max"]
+                y_min = self.cheat_table[self.search_space_id][self.dataset_id]["y_min"]
             else:
                 y_max = self.dataset.global_info["y_max_mean"]
                 y_min = self.dataset.global_info["y_min_mean"]
