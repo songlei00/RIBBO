@@ -4,6 +4,7 @@ try:
     import ujson as json
 except:
     import json
+import argparse
 
 import matplotlib.pyplot as plt 
 
@@ -44,40 +45,49 @@ def group_fn(trajectory):
     return trajectory.metadata['designer']
 
 
-with open('others/hpob-summary-stats/train-summary-stats.json', 'r') as f:
+parser = argparse.ArgumentParser()
+parser.add_argument('--mode', type=str, default='train', choices=['train', 'test', 'validation'])
+args = parser.parse_args()
+
+mode = args.mode
+with open('others/hpob-summary-stats/{}-summary-stats.json'.format(mode), 'r') as f:
     meta_data = json.load(f)
 
-save_dir = 'plot/hpob'
+if mode == 'train':
+    save_dir = 'plot/hpob'
+    path = 'cache/hpob'
+else:
+    save_dir = 'plot/hpob_{}'.format(mode)
+    path = 'cache/hpob_{}'.format(mode)
+
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
 # for search_space_id in meta_data:
 for search_space_id in ['6767']:
-    path = 'cache/hpob'
     trajectory_dataset = TrajectoryDataset(
         search_space_id,
         '',
         path,
     )
 
-    f, axs = plot_dataset(
-        trajectory_dataset,
-        xy_fn,
-        split_fn,
-        group_fn,
-        ncols=5,
-        shaded_std=False,
-    )
-    save_name = '{}_y.png'.format(search_space_id)
-    plt.savefig(os.path.join(save_dir, save_name))
+    print('Load search space id: {}'.format(search_space_id))
+    print(trajectory_dataset.id2info)
 
-    f, axs = plot_dataset(
-        trajectory_dataset,
-        x_besty_fn,
-        split_fn,
-        group_fn,
-        ncols=5,
-        shaded_std=False,
-    )
-    save_name = '{}.png'.format(search_space_id)
-    plt.savefig(os.path.join(save_dir, save_name))
+    for mode in ['y', 'best_y']:
+        if mode == 'y':
+            fn = xy_fn
+            save_name = '{}_y.png'.format(search_space_id)
+        else:
+            fn = x_besty_fn
+            save_name = '{}.png'.format(search_space_id)
+
+        f, axs = plot_dataset(
+            trajectory_dataset,
+            fn,
+            split_fn,
+            group_fn,
+            ncols=5,
+            shaded_std=False,
+        )
+        plt.savefig(os.path.join(save_dir, save_name))

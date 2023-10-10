@@ -36,7 +36,7 @@ class TrajectoryDataset():
             trajectory_list = self.load_cache(cache_path)
             assert isinstance(trajectory_list, list)
         self.trajectory_list = trajectory_list
-        # self.trajectory_list = map_smally(self.trajectory_list)
+        # self.trajectory_list = filter_dataset(self.trajectory_list)
         
         # get raw metrics
         self.id2info, self.global_info = self.get_dataset_info()
