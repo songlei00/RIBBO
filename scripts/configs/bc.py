@@ -10,7 +10,7 @@ x_type = "stochastic"
 y_loss_coeff = 0.0
 mix_method = "concat"
 normalize_method = "random"
-prioritize = True
+prioritize = False
 prioritize_alpha = 1.0
 
 embed_dim = 256
@@ -40,7 +40,7 @@ cache_dir = "./cache/hpob"
 
 class optimizer_args(NameSpace):
     lr = 1e-4
-    weight_decay = 2e-4
+    weight_decay = 1e-2
     betas = [0.9, 0.999]
     warmup_steps = 10_000
     
