@@ -56,7 +56,8 @@ class DecisionTransformerDesigner(BaseDesigner):
                 input_dim=embed_dim, 
                 output_dim=x_dim, 
                 reparameterize=False, 
-                conditioned_logstd=False, 
+                conditioned_logstd=True, 
+                logstd_min=-5, 
                 hidden_dims=[embed_dim, ]
             )
         else:
