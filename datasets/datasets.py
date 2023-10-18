@@ -11,7 +11,12 @@ from torch.utils.data import Dataset, IterableDataset
 from datasets.trajectory import Trajectory
 from datasets.metrics import metric_regret
 from datasets.load_datasets import load_hpob_dataset
-from algorithms.data_filter import filter_designer, filter_dataset, map_smally
+from algorithms.data_filter import (
+    filter_designer, 
+    filter_dataset, 
+    map_smally,
+    rule_based_filter_dataset,
+)
 
 
 class TrajectoryDataset():
@@ -36,7 +41,7 @@ class TrajectoryDataset():
             trajectory_list = self.load_cache(cache_path)
             assert isinstance(trajectory_list, list)
         self.trajectory_list = trajectory_list
-        # self.trajectory_list = filter_dataset(self.trajectory_list)
+        # self.trajectory_list = rule_based_filter_dataset(self.trajectory_list)
         
         # get raw metrics
         self.id2info, self.global_info = self.get_dataset_info()
@@ -75,10 +80,17 @@ class TrajectoryDataset():
             y_max = max(t.y.max() for t in id2group[id]).item()
             y_min = min(t.y.min() for t in id2group[id]).item()
             best_y_average = sum(t.y.max() for t in id2group[id]) / len(id2group[id])
+            span = [t.y.max() - t.y.min() for t in id2group[id]]
+            span_min = min(span).item()
+            span_max = max(span).item()
+            span_mean = np.mean(span).item()
             id2info[id].update({
                 "y_max": y_max, 
                 "y_min": y_min, 
-                "best_y_average": best_y_average
+                "best_y_average": best_y_average,
+                'span_min': span_min,
+                'span_max': span_max,
+                'span_mean': span_mean,
             })
         
         # global info
@@ -200,6 +212,8 @@ class TrajectoryIterableDataset(TrajectoryDataset, IterableDataset):
             for i, t in enumerate(self.trajectory_list):
                 dataset_id = t.metadata["dataset_id"]
                 span = self.id2info[dataset_id]["y_max"] - self.id2info[dataset_id]["y_min"]
+                # span_ratio = self.id2info[dataset_id]["span_max"] / self.id2info[dataset_id]["span_mean"]
+                # metric_values.append(self.metric_fn(span_ratio))
                 metric_values.append(self.metric_fn(span))
             metric_values = np.asarray(metric_values, dtype=np.float32)
             self.sum_tree.add(metric_values)
