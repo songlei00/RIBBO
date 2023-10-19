@@ -39,7 +39,7 @@ data_dir = './data/generated_data/hpob'
 cache_dir = "./cache/hpob"
 
 class optimizer_args(NameSpace):
-    lr = 1e-4
+    lr = 2e-4
     weight_decay = 1e-2
     betas = [0.9, 0.999]
     warmup_steps = 10_000
