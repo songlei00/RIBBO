@@ -34,3 +34,6 @@ for search_space_id in ['6767']:
         input_seq_len=300, 
         normalize_method='random',
     )
+
+    print('length:', len(dataset))
+    print('x dim:', dataset.trajectory_list[0].X.shape[1])
