@@ -175,7 +175,7 @@ class DecisionTransformerDesigner(BaseDesigner):
             "loss/x_loss": x_loss.item(), 
             "loss/y_loss": y_loss.item(), 
             "loss/tot_loss": tot_loss.item(),
-            "misc/learning_rate": self.optim_scheduler.get_last_lr()[0]
+            "loss/learning_rate": self.optim_scheduler.get_last_lr()[0]
         }
         
 

@@ -41,6 +41,8 @@ class DecisionTransformer(GPT2):
         if self.add_bos:
             self.bos_x_embed = NoDecayParameter(torch.zeros([1, embed_dim]).float(), requires_grad=True)
             self.bos_y_embed = NoDecayParameter(torch.zeros([1, embed_dim]).float(), requires_grad=True)
+            torch.init.normal_(self.bos_x_embed)
+            torch.init.normal_(self.bos_y_embed)
         self.pos_encoding = get_pos_encoding(pos_encoding, embed_dim, seq_len)
         self.x_embed = nn.Linear(x_dim, embed_dim)
         self.y_embed = nn.Linear(y_dim, embed_dim)
@@ -75,7 +77,7 @@ class DecisionTransformer(GPT2):
                 key_padding_mask = torch.concat([torch.zeros([B, 1]).bool().to(key_padding_mask.device), key_padding_mask], dim=-1)
             if self.mix_method == "concat":
                 inputs = torch.concat([x_embedding, y_embedding, regret_embedding], dim=-1)
-                inputs = self.pos_encoding(self.input_proj(torch.nn.functional.relu(inputs)), timesteps)
+                inputs = self.pos_encoding(self.input_proj(inputs), timesteps)
             elif self.mix_method == "add":
                 inputs = x_embedding + y_embedding + regret_embedding
                 inputs = self.pos_encoding(inputs, timesteps)

@@ -57,7 +57,7 @@ class BCTransformer(GPT2):
         y_embedding = self.y_embed(y)
         if self.mix_method == "concat": 
             inputs = torch.concat([x_embedding, y_embedding], dim=-1)
-            inputs = self.pos_encoding(self.input_proj(torch.nn.functional.relu(inputs)), timesteps)
+            inputs = self.pos_encoding(self.input_proj(inputs), timesteps)
         elif self.mix_method == "interleave":
             x_embedding = self.pos_encoding(x_embedding, timesteps)
             y_embedding = self.pos_encoding(y_embedding, timesteps)
