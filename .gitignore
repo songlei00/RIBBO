@@ -6,3 +6,4 @@ log
 plot/*
 !plot/*.py
 data
+wandb

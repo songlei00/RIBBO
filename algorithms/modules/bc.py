@@ -6,6 +6,7 @@ import torch.nn as nn
 from offlinerllib.module.net.attention.gpt2 import GPT2
 from offlinerllib.module.net.attention.positional_encoding import get_pos_encoding
 from offlinerllib.module.net.attention.base import NoDecayParameter
+from offlinerllib.module.net.mlp import MLP
 
 
 class BCTransformer(GPT2):
@@ -49,7 +50,8 @@ class BCTransformer(GPT2):
         # how to mix the inputs
         self.mix_method = mix_method
         if self.mix_method == "concat":
-            self.input_proj = nn.Linear(2*embed_dim, embed_dim)
+            self.input_proj = MLP(input_dim=2*embed_dim, hidden_dims=[embed_dim, embed_dim, ])
+            # self.input_proj = nn.Linear(2*embed_dim, embed_dim)
         
     def encode(self, x, y, timesteps, key_padding_mask):
         B, L, X = x.shape
