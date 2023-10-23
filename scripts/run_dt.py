@@ -86,7 +86,7 @@ trainloader = DataLoader(
 )
 train_iter = iter(trainloader)
 
-for i_epoch in trange(args.num_epoch):
+for i_epoch in trange(1, args.num_epoch+1):
     for i_batch in range(args.step_per_epoch):
         batch = next(train_iter)
     # for i_batch, batch in enumerate(trainloader):
@@ -100,7 +100,13 @@ for i_epoch in trange(args.num_epoch):
 
     if i_epoch % args.log_interval == 0:
         logger.log_scalars("", train_metrics, step=i_epoch)
-    
+
+    if i_epoch % args.save_interval == 0:
+        logger.log_object(
+            name=f"{i_epoch}.ckpt",
+            object=designer.state_dict(), 
+            path=os.path.join(logger.log_dir, "ckpt"),
+        )
 
 # final rollout
 for mode, datasets in zip(["train", "test"], [args.train_datasets, args.test_datasets]):
