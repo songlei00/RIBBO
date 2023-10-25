@@ -121,10 +121,10 @@ for i_epoch in trange(1, args.num_epoch+1):
     if i_epoch % args.log_interval == 0:
         logger.log_scalars("", train_metrics, step=i_epoch)
 
-    if i_epoch % args.save_interval == 0:
+    if i_epoch % args.save_interval == 0 or i_epoch == 1:
         logger.log_object(
             name=f"{i_epoch}.ckpt",
-            object=designer.cpu(), 
+            object=designer.state_dict(), 
             path=os.path.join(logger.log_dir, "ckpt"),
         )
         
