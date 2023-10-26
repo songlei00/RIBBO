@@ -44,6 +44,15 @@ class TrajectoryDataset():
         
         # get raw metrics
         self.id2info, self.global_info = self.get_dataset_info()
+        self.algo = {
+            "ShuffledGridSearch": 0, 
+            "RegularizedEvolution": 1, 
+            "Random": 2, 
+            "HillClimbing": 3, 
+            "HeBO": 4, 
+            "EagleStrategy": 5, 
+            "CMAES": 6
+        }
         
         # calculate regrets
         self.set_regrets()
@@ -167,6 +176,7 @@ class TrajectoryDataset():
             "x": trajectory.X[start_idx:start_idx+self.input_seq_len], 
             "y": y[start_idx:start_idx+self.input_seq_len].unsqueeze(-1), 
             "regrets": regrets[start_idx:start_idx+self.input_seq_len].unsqueeze(-1), 
+            "algo": torch.LongTensor([self.algo[trajectory.metadata["designer"]]]), 
             "timesteps": timesteps, 
             "masks": torch.ones_like(timesteps).float()
         }

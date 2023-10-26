@@ -93,7 +93,7 @@ class BCTransformerDesigner(BaseDesigner):
         self.past_y = torch.zeros([eval_num, self.seq_len, 1], dtype=torch.float).to(self.device)
         self.timesteps = torch.arange(self.seq_len).long().repeat(eval_num, 1).to(self.device)
         self.step_count = 0
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
         
     @torch.no_grad() # need to adapt for seq len
     def suggest(
@@ -211,4 +211,5 @@ def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, d
     metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, id2normalized_onestep_regret)
     
     designer.train()
+    torch.cuda.empty_cache()
     return metrics, trajectory_record

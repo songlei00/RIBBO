@@ -12,10 +12,10 @@ from offlinerllib.module.actor import (
     DeterministicActor
 )
 from algorithms.designers.base import BaseDesigner
-from algorithms.modules.dt import DecisionTransformer
+from algorithms.modules.optformer import OptFormerTransformer
 from algorithms.utils import calculate_metrics
 
-class DecisionTransformerDesigner(BaseDesigner):
+class OptFormerDesigner(BaseDesigner):
     def __init__(
         self, 
         transformer: BaseTransformer, 
@@ -32,7 +32,7 @@ class DecisionTransformerDesigner(BaseDesigner):
         **kwargs
     ) -> None:
         super().__init__()
-        assert isinstance(transformer, DecisionTransformer)
+        assert isinstance(transformer, OptFormerTransformer)
         self.transformer = transformer
         self.x_dim = x_dim
         self.y_dim = y_dim
@@ -63,6 +63,7 @@ class DecisionTransformerDesigner(BaseDesigner):
         else:
             raise ValueError
         if y_loss_coeff:
+            # this is because y is not scaled into any range
             self.y_head = DeterministicActor(
                 backend=torch.nn.Identity(), 
                 input_dim=embed_dim, 
@@ -76,7 +77,7 @@ class DecisionTransformerDesigner(BaseDesigner):
         decay, no_decay = self.transformer.configure_params()
         decay_parameters = [*decay, *self.x_head.parameters()]
         if self.y_loss_coeff:
-            decay_parameters.extend([*self.y_head.parameters()])
+            decay_parameters.extend(self.y_head.parameters())
         self.optim = torch.optim.AdamW([
             {"params": decay_parameters, "weight_decay": weight_decay}, 
             {"params":  no_decay, "weight_decay": 0.0}
@@ -87,62 +88,70 @@ class DecisionTransformerDesigner(BaseDesigner):
             self.total_parameters.extend(self.y_head.parameters())
         
     @torch.no_grad()
-    def reset(self, eval_num=1, init_regret=0.0):
-        self.past_x = torch.zeros([eval_num, self.seq_len+1, self.x_dim], dtype=torch.float).to(self.device)
-        self.past_y = torch.zeros([eval_num, self.seq_len+1, 1], dtype=torch.float).to(self.device)
-        self.past_regrets = torch.zeros([eval_num, self.seq_len+1, 1], dtype=torch.float).to(self.device)
-        self.past_regrets[:, 0] = init_regret
-        self.timesteps = torch.arange(self.seq_len+1).long().to(self.device).reshape(1, self.seq_len+1)
+    def reset(self, algo: Union[str, int], eval_num=1):
+        if isinstance(algo, str):
+            algo = {
+                "ShuffledGridSearch": 0, 
+                "RegularizedEvolution": 1, 
+                "Random": 2, 
+                "HillClimbing": 3, 
+                "HeBO": 4, 
+                "EagleStrategy": 5, 
+                "CMAES": 6
+            }.get(algo)
+        self.cur_algo = algo * torch.ones([eval_num, 1], dtype=torch.int32).to(self.device)
+        self.past_x = torch.zeros([eval_num, self.seq_len, self.x_dim], dtype=torch.float).to(self.device)
+        self.past_y = torch.zeros([eval_num, self.seq_len, 1], dtype=torch.float).to(self.device)
+        self.timesteps = torch.arange(self.seq_len).long().repeat(eval_num, 1).to(self.device)
         self.step_count = 0
+        # torch.cuda.empty_cache()
         
-    @torch.no_grad()
+    @torch.no_grad() # need to adapt for seq len
     def suggest(
         self, 
         last_x=None, 
         last_y=None, 
-        last_regrets=None, 
         determinisitc=False, 
         *args, **kwargs
     ):
-        if (
-            last_x is not None and \
-            last_y is not None
-        ):
+        if last_x is not None and last_y is not None:
             last_x = torch.as_tensor(last_x).float().to(self.device)
             last_y = torch.as_tensor(last_y).float().to(self.device)
-            last_regrets = torch.as_tensor(last_regrets).float().to(self.device)
             self.past_x[:, self.step_count] = last_x
             self.past_y[:, self.step_count] = last_y
-            self.past_regrets[:, self.step_count+1] = last_regrets
             self.step_count += 1
         
-        x_pred, *_ = self.transformer(
-            x=self.past_x[:, :self.step_count+1][:, -self.input_seq_len:], 
-            y=self.past_y[:, :self.step_count+1][:, -self.input_seq_len:], 
-            regrets_to_go=self.past_regrets[:, :self.step_count+1][:, -self.input_seq_len:] if self.use_abs_timestep else None, 
-            timesteps=self.timesteps[:, :self.step_count+1], 
+        x_pred, y_pred = self.transformer(
+            x=self.past_x[:, :self.step_count][:, -self.input_seq_len:], 
+            y=self.past_y[:, :self.step_count][:, -self.input_seq_len:], 
+            algo=self.cur_algo, 
+            timesteps=self.timesteps[:, :self.step_count][:, -self.input_seq_len:] if self.use_abs_timestep else None, 
             attention_mask=None, 
             key_padding_mask=None # during testing all positions are valid
         )
-        suggest_x = self.x_head.sample(x_pred[:, self.step_count], deterministic=determinisitc)[0]
+        suggest_x = self.x_head.sample(
+            x_pred[:, -1], deterministic=determinisitc
+        )[0]
         return suggest_x
     
     def update(self, batch: Dict[str, Any], clip_grad: Optional[float]=None):
-        x, y, regrets, timesteps, masks = [
+        x, y, algo, timesteps, masks = [
             torch.as_tensor(v).to(self.device) 
-            for v in itemgetter("x", "y","regrets", "timesteps", "masks")(batch)
+            for v in itemgetter("x", "y", "algo", "timesteps", "masks")(batch)
         ]
         B, L, X = x.shape
         
         key_padding_mask = ~masks.to(torch.bool)
-        x_pred, y_pred, regrets_pred = self.transformer(
+        x_pred, y_pred = self.transformer(
             x=x, 
             y=y, 
-            regrets_to_go=regrets, 
+            algo=algo, 
             timesteps=timesteps if self.use_abs_timestep else None, 
             attention_mask=None, 
             key_padding_mask=key_padding_mask
         )
+        x_pred = x_pred[:, :-1] # discard the last prediction
+        y_pred = y_pred[:, :-1]
         # x reconstruction
         if isinstance(self.x_head, SquashedDeterministicActor):
             x_loss = torch.nn.functional.mse_loss(
@@ -156,6 +165,7 @@ class DecisionTransformerDesigner(BaseDesigner):
                 x.detach(), 
             )[0]
         tot_loss = x_loss = (x_loss * masks.unsqueeze(-1)).mean()
+        # y reconstruction
         if self.y_loss_coeff:
             y_loss = torch.nn.functional.mse_loss(
                 self.y_head.sample(y_pred)[0], 
@@ -179,17 +189,17 @@ class DecisionTransformerDesigner(BaseDesigner):
             "loss/learning_rate": self.optim_scheduler.get_last_lr()[0], 
             "loss/grad_norm": norm.item()
         }
-        
 
+        
 @torch.no_grad()
-def evaluate_decision_transformer_designer(problem, designer: DecisionTransformerDesigner, datasets, eval_episode, init_regret):
+def evaluate_optformer_designer(problem, designer: OptFormerDesigner, datasets, eval_episode, algo):
     print(f"evaluating on {datasets} ...")
     designer.eval()
     id2y, id2normalized_y, id2normalized_onestep_regret = {}, {}, {}
     for id in datasets:
         problem.reset_task(id)
-        designer.reset(eval_episode, init_regret)
-        last_x, last_y, last_normalized_y, last_normalized_regrets = None, None, None, init_regret
+        designer.reset(algo, eval_episode)
+        last_x, last_y, last_normalized_y = None, None, None
         this_y = np.zeros([eval_episode, problem.seq_len, 1])
         this_normalized_y = np.zeros([eval_episode, problem.seq_len, 1])
         this_normalized_onestep_regret = np.zeros([eval_episode, problem.seq_len, 1])
@@ -197,21 +207,20 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
             last_x = designer.suggest(
                 last_x=last_x, 
                 last_y=last_normalized_y, 
-                last_regrets=last_normalized_regrets, 
                 determinisitc=True
             )
             last_normalized_y, info = problem.forward(last_x)
             last_y = info["raw_y"]
             last_normalized_onestep_regret = info["normalized_onestep_regret"]
-            last_normalized_regrets = last_normalized_regrets - last_normalized_onestep_regret
 
             this_y[:, i] = last_y.detach().cpu().numpy()
             this_normalized_y[:, i] = last_normalized_y.detach().cpu().numpy()
             this_normalized_onestep_regret[:, i] = last_normalized_onestep_regret.detach().cpu().numpy()
+            
         id2y[id] = this_y
         id2normalized_y[id] = this_normalized_y
         id2normalized_onestep_regret[id] = this_normalized_onestep_regret
-        
+    
     metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, id2normalized_onestep_regret)
     
     designer.train()
