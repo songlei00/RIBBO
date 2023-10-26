@@ -32,6 +32,7 @@ num_epoch = 1000
 step_per_epoch = 100
 eval_interval = 20
 log_interval = 1
+save_interval = 500
 eval_episodes = 1
 
 hpob_root_dir = "./data/downloaded_data/hpob/"

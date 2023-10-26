@@ -159,14 +159,15 @@ class HPOBMetaProblem():
     def get_dataset(self):
         return self.dataset
 
-    def get_normalized_y_and_regret(self, y):
-        if self.dataset_id in self.dataset.global_info["train_datasets"]:
-            info = self.dataset.id2info[self.dataset_id]
+    def get_normalized_y_and_regret(self, y, id=None):
+        id = id or self.dataset_id
+        if id in self.dataset.global_info["train_datasets"]:
+            info = self.dataset.id2info[id]
             y_max, y_min = info["y_max"], info["y_min"]
         else:
-            if self.search_space_id in self.cheat_table and self.dataset_id in self.cheat_table[self.search_space_id]:
-                y_max = self.cheat_table[self.search_space_id][self.dataset_id]["y_max"]
-                y_min = self.cheat_table[self.search_space_id][self.dataset_id]["y_min"]
+            if self.search_space_id in self.cheat_table and id in self.cheat_table[self.search_space_id]:
+                y_max = self.cheat_table[self.search_space_id][id]["y_max"]
+                y_min = self.cheat_table[self.search_space_id][id]["y_min"]
             else:
                 y_max = self.dataset.global_info["y_max_mean"]
                 y_min = self.dataset.global_info["y_min_mean"]
