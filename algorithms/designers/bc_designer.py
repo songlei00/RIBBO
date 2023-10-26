@@ -174,7 +174,7 @@ class BCTransformerDesigner(BaseDesigner):
             "loss/y_loss": y_loss.item(), 
             "loss/tot_loss": tot_loss.item(),
             "loss/learning_rate": self.optim_scheduler.get_last_lr()[0], 
-            "loss/grad_norm": norm.item()
+            "loss/grad_norm": norm.item() if clip_grad is not None else 0.0
         }
 
         
