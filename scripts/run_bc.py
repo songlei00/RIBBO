@@ -121,7 +121,7 @@ for i_epoch in trange(1, args.num_epoch+1):
     if i_epoch % args.log_interval == 0:
         logger.log_scalars("", train_metrics, step=i_epoch)
 
-    if i_epoch % args.save_interval == 0 or i_epoch == 1:
+    if args.save_interval and i_epoch % args.save_interval == 0:
         logger.log_object(
             name=f"{i_epoch}.ckpt",
             object=designer.state_dict(), 

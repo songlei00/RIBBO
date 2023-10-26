@@ -77,12 +77,15 @@ class BCTransformerDesigner(BaseDesigner):
         decay, no_decay = self.transformer.configure_params()
         decay_parameters = [*decay, *self.x_head.parameters()]
         if self.y_loss_coeff:
-            decay_parameters.extend([*self.y_head.parameters()])
+            decay_parameters.extend(self.y_head.parameters())
         self.optim = torch.optim.AdamW([
             {"params": decay_parameters, "weight_decay": weight_decay}, 
             {"params":  no_decay, "weight_decay": 0.0}
         ], lr=lr, betas=betas)
         self.optim_scheduler = torch.optim.lr_scheduler.LambdaLR(self.optim, lambda step: min((step+1)/warmup_steps, 1))
+        self.total_parameters = [*decay, *no_decay, *self.x_head.parameters()]
+        if self.y_loss_coeff:
+            self.total_parameters.extend(self.y_head.parameters())
         
     @torch.no_grad()
     def reset(self, eval_num=1):
@@ -163,14 +166,15 @@ class BCTransformerDesigner(BaseDesigner):
         self.optim.zero_grad()
         tot_loss.backward()
         if clip_grad is not None:
-            raise NotImplementedError
+            norm = torch.nn.utils.clip_grad_norm_(self.total_parameters, clip_grad)
         self.optim.step()
         self.optim_scheduler.step()
         return {
             "loss/x_loss": x_loss.item(), 
             "loss/y_loss": y_loss.item(), 
             "loss/tot_loss": tot_loss.item(),
-            "loss/learning_rate": self.optim_scheduler.get_last_lr()[0]
+            "loss/learning_rate": self.optim_scheduler.get_last_lr()[0], 
+            "loss/grad_norm": norm.item()
         }
 
         

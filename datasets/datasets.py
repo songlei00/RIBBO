@@ -107,7 +107,7 @@ class TrajectoryDataset():
             "y_max": y_max, 
             "y_max_mean": y_max_mean, 
             "y_min_mean": y_min_mean, 
-            "train_datasets": set(id2info.keys())
+            "train_datasets": sorted(list(id2info.keys()))
         })
         return id2info, global_info
 
