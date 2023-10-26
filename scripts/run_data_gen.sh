@@ -31,7 +31,7 @@ do
             --seed=$seed \
             --cpu_start=$cpu_start \
             --cpu_end=$cpu_end \
-            --mode=test
+            --mode=train
         sleep 1
         echo >&7 $proc_id
     } &

@@ -30,15 +30,14 @@ class TrajectoryDataset():
         scale_clip_range: Optional[List[float]]=None, 
         update: bool = False,
     ) -> None:
-        cache_file = search_space_id + '.pkl'
-        cache_path = os.path.join(cache_dir, cache_file)
-
-        if not os.path.exists(cache_path) or update:
+        cache_dir = os.path.join(cache_dir, search_space_id)
+        block_size = 50
+        if not os.path.exists(cache_dir) or update:
             if not os.path.exists(cache_dir):
                 os.makedirs(cache_dir)
-            trajectory_list = self.create_cache(search_space_id, data_dir, cache_path)
+            trajectory_list = self.create_cache(search_space_id, data_dir, cache_dir, block_size)
         else:
-            trajectory_list = self.load_cache(cache_path)
+            trajectory_list = self.load_cache(search_space_id, cache_dir, block_size, None)
             assert isinstance(trajectory_list, list)
         self.trajectory_list = trajectory_list
         # self.trajectory_list = rule_based_filter_dataset(self.trajectory_list)
@@ -52,19 +51,46 @@ class TrajectoryDataset():
         self.normalize_method = normalize_method
         self.scale_clip_range = scale_clip_range
 
-    def create_cache(self, search_space_id, data_dir, cache_path):
+    def create_cache(self, search_space_id, data_dir, cache_dir, block_size=50):
         trajectory_list = load_hpob_dataset(data_dir, search_space_id)
-        
-        with open(cache_path, 'wb') as f:
-            pickle.dump(trajectory_list, f)
-        print('Save trajectory to {}'.format(cache_path))
+
+        k2t = dict()
+        for t in trajectory_list:
+            seed = t.metadata['seed']
+            idx = int(seed) // block_size
+            if idx in k2t:
+                k2t[idx].append(t)
+            else:
+                k2t[idx] = [t]
+
+        for k in k2t:
+            cache_path = os.path.join(cache_dir, '{}_{}_{}.pkl'.format(search_space_id, k*block_size, (k+1)*block_size-1))
+            with open(cache_path, 'wb') as f:
+                pickle.dump(k2t[k], f)
+            print('Save trajectory to {}'.format(cache_path))
 
         return trajectory_list
         
-    def load_cache(self, cache_path):
-        with open(cache_path, 'rb') as f:
-            trajectory_list = pickle.load(f)
-        print('Load trajectory from {}'.format(cache_path))
+    def load_cache(self, search_space, cache_dir, block_size=50, n_block=None):
+        trajectory_list = []
+
+        if n_block is None:
+            cache_files = [file for file in os.listdir(cache_dir) if file.startswith(search_space)]
+        else:
+            cache_files = ['{}_{}_{}.pkl'.format(search_space, i*block_size, (i+1)*block_size-1) for i in range(n_block)]
+
+        for file in cache_files:
+            cache_path = os.path.join(cache_dir, file)
+
+            if not os.path.exists(cache_path):
+                print('{} not exists'.format(cache_path))
+                continue
+
+            with open(cache_path, 'rb') as f:
+                t_list = pickle.load(f)
+                print('Load trajectory from {}, size: {}'.format(cache_path, len(t_list)))
+
+            trajectory_list.extend(t_list)
         return trajectory_list
 
     def get_dataset_info(self):
