@@ -8,3 +8,4 @@ plot/*
 data
 wandb
 scripts/rollout_and_vis.py
+scripts/configs/rollout.py
