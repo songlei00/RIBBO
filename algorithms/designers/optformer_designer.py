@@ -14,6 +14,7 @@ from offlinerllib.module.actor import (
 from algorithms.designers.base import BaseDesigner
 from algorithms.modules.optformer import OptFormerTransformer
 from algorithms.utils import calculate_metrics
+from algorithms.optim.scheduler import LinearWarmupCosineAnnealingLR
 
 class OptFormerDesigner(BaseDesigner):
     def __init__(
@@ -73,7 +74,7 @@ class OptFormerDesigner(BaseDesigner):
         
         self.to(device)
         
-    def configure_optimizers(self, lr, weight_decay, betas, warmup_steps):
+    def configure_optimizers(self, lr, weight_decay, betas, warmup_steps, max_steps):
         decay, no_decay = self.transformer.configure_params()
         decay_parameters = [*decay, *self.x_head.parameters()]
         if self.y_loss_coeff:
@@ -82,7 +83,11 @@ class OptFormerDesigner(BaseDesigner):
             {"params": decay_parameters, "weight_decay": weight_decay}, 
             {"params":  no_decay, "weight_decay": 0.0}
         ], lr=lr, betas=betas)
-        self.optim_scheduler = torch.optim.lr_scheduler.LambdaLR(self.optim, lambda step: min((step+1)/warmup_steps, 1))
+        self.optim_scheduler = LinearWarmupCosineAnnealingLR(
+            self.optim, 
+            warmup_epochs=warmup_steps, 
+            max_epochs=max_steps
+        )
         self.total_parameters = [*decay, *no_decay, *self.x_head.parameters()]
         if self.y_loss_coeff:
             self.total_parameters.extend(self.y_head.parameters())

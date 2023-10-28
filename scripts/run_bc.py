@@ -92,7 +92,8 @@ designer = BCTransformerDesigner(
 )
 
 designer.configure_optimizers(
-    **args.optimizer_args
+    max_steps=args.step_per_epoch*args.num_epoch
+    **args.optimizer_args, 
 )
 
 designer.train()
