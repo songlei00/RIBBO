@@ -165,8 +165,14 @@ class BCTransformerDesigner(BaseDesigner):
             y_loss = torch.tensor(0.0)
         self.optim.zero_grad()
         tot_loss.backward()
+        grad_norm = torch.cat([
+            param.grad.detach().flatten()
+            for param in self.total_parameters
+            if param.grad is not None
+        ]).norm()
+        bos_norm = self.transformer.bos_embed.grad.norm()
         if clip_grad is not None:
-            norm = torch.nn.utils.clip_grad_norm_(self.total_parameters, clip_grad)
+            torch.nn.utils.clip_grad_norm_(self.total_parameters, clip_grad)
         self.optim.step()
         self.optim_scheduler.step()
         return {
@@ -174,7 +180,8 @@ class BCTransformerDesigner(BaseDesigner):
             "loss/y_loss": y_loss.item(), 
             "loss/tot_loss": tot_loss.item(),
             "loss/learning_rate": self.optim_scheduler.get_last_lr()[0], 
-            "loss/grad_norm": norm.item() if clip_grad is not None else 0.0
+            "loss/grad_norm": grad_norm.item(), 
+            "loss/bc_bos_norm": bos_norm.item()
         }
 
         
