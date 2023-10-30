@@ -13,26 +13,6 @@ from problems.hpob_problem import HPOBMetaProblem
 from datasets.datasets import TrajectoryDataset
 from algorithms.utils import log_rollout
 
-designers = [
-    # 'Random',
-    # 'GridSearch',
-    # 'ShuffledGridSearch',
-    # 'RegularizedEvolution',
-    # 'HillClimbing',
-    'EagleStrategy',
-    # 'Vizier',
-    # 'HeBO',
-    # 'CMAES',
-]
-
-def filter_designer(dataset):
-    def filter_fn(trajectory):
-        metadata = trajectory.metadata
-        return metadata['designer'] in designers
-    ret = list(filter(filter_fn, dataset.trajectory_list))
-    logger.info('Filter designers')
-    return TrajectoryDataset(ret)
-
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:15]
     args.test_datasets = args.test_datasets[args.id][:15]
@@ -92,7 +72,8 @@ designer = BCTransformerDesigner(
 )
 
 designer.configure_optimizers(
-    **args.optimizer_args
+    max_steps=args.step_per_epoch*args.num_epoch, 
+    **args.optimizer_args, 
 )
 
 designer.train()

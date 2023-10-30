@@ -8,12 +8,12 @@ def filter_designer(trajectory_list):
         # 'Random',
         # 'GridSearch',
         # 'ShuffledGridSearch',
-        # 'RegularizedEvolution',
-        # 'HillClimbing',
+        'RegularizedEvolution',
+        'HillClimbing',
         'EagleStrategy',
         # 'Vizier',
         # 'HeBO',
-        # 'CMAES',
+        'CMAES',
     ]
     def filter_fn(trajectory):
         metadata = trajectory.metadata
