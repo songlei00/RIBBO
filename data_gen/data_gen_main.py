@@ -18,6 +18,7 @@ from hill_climbing_designer import HillClimbingDesigner
 from regularized_evolution_designer import RegularizedEvolutionDesigner
 from hebo_designer import HeBODesigner
 from hpob_problem_statement import problem_statement as hpob_problem_statement
+from synthetic_problem_statement import problem_statement as synthetic_problem_statement
 from utils import seed_everything
 
 def designer_factory(name, problem, seed):
@@ -69,10 +70,10 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('--problem', type=str, required=True, choices=['hpob', 'synthetic'])
     parser.add_argument('--designer', type=str, required=True)
     parser.add_argument('--search_space_id', type=str, required=True)
     parser.add_argument('--dataset_id', type=str, required=True)
-    parser.add_argument('--root_dir', type=str, required=True)
     parser.add_argument('--out_name', type=str, required=True)
     parser.add_argument('--length', type=int, default=300)
     parser.add_argument('--seed', type=int, default=None)
@@ -81,11 +82,19 @@ if __name__ == '__main__':
     if args.seed is not None:
         seed_everything(args.seed)
 
-    problem, f = hpob_problem_statement(
-        args.search_space_id,
-        args.dataset_id,
-        args.root_dir,
-    )
+    if args.problem == 'hpob':
+        problem, f = hpob_problem_statement(
+            args.search_space_id,
+            args.dataset_id,
+            './data/downloaded_data/hpob',
+        )
+    elif args.problem == 'synthetic':
+        problem, f = synthetic_problem_statement(
+            args.search_space_id,
+            args.dataset_id,
+        )
+    else:
+        raise NotImplementedError
     designer = designer_factory(args.designer, problem, args.seed)
     metric_name = problem.metric_information.item().name
 

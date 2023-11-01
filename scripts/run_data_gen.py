@@ -16,21 +16,21 @@ designers = [
     'HillClimbing',
     'EagleStrategy',
     # 'Vizier',
-    'HeBO',
+    # 'HeBO',
     'CMAES',
 ]
 
 
-def get_cmd(designer, search_space_id, dataset_id, out_name, length, seed):
+def get_cmd(problem, designer, search_space_id, dataset_id, out_name, length, seed):
     prefix = 'taskset -c {}-{}'.format(args.cpu_start, args.cpu_end)
     cmd = 'python data_gen/data_gen_main.py \
+        --problem={} \
         --designer={} \
         --search_space_id={} \
         --dataset_id={} \
-        --root_dir=./data/downloaded_data/hpob \
         --out_name={} \
         --length={} \
-        --seed={}'.format(designer, search_space_id, dataset_id, out_name, length, seed)
+        --seed={}'.format(problem, designer, search_space_id, dataset_id, out_name, length, seed)
     cmd = ' '.join([prefix, cmd])
     return cmd
 
@@ -38,6 +38,7 @@ def get_cmd(designer, search_space_id, dataset_id, out_name, length, seed):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument('--problem', type=str, required=True, choices=['hpob', 'synthetic'])
     parser.add_argument('--seed', type=int, required=True)
     parser.add_argument('--smoke_test', action='store_true')
     parser.add_argument('--cpu_start', type=int, required=True)
@@ -45,8 +46,14 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default='train', choices=['train', 'test', 'validation'])
     args = parser.parse_args()
 
-    with open('others/hpob-summary-stats/{}-summary-stats.json'.format(args.mode), 'rb') as f:
-        summary_stats = json.load(f)
+    if args.problem == 'hpob':
+        with open('others/hpob-summary-stats/{}-summary-stats.json'.format(args.mode), 'rb') as f:
+            summary_stats = json.load(f)
+    elif args.problem == 'synthetic':
+        from problems.synthetic import bbob_func_names
+        summary_stats = {name: [str(i) for i in range(50)] for name in bbob_func_names}
+    else:
+        raise NotImplementedError
 
     # key = list(summary_stats.keys())[0]
     # value = summary_stats[key][: 2]
@@ -61,10 +68,11 @@ if __name__ == '__main__':
         for designer in designers:
             print(designer)
             os.system(get_cmd(
+                args.problem,
                 designer, 
                 search_space_id, 
                 dataset_id, 
-                'data/generated_data/smoke_test_{}.json'.format(designer), 
+                'data/generated_data/smoke_test_{}_{}_{}.json'.format(search_space_id, dataset_id, designer), 
                 100,
                 seed=args.seed,
             ))
@@ -73,9 +81,9 @@ if __name__ == '__main__':
         failed_cmds = []
 
         if args.mode == 'train':
-            dir_path = 'data/generated_data/hpob/seed{}'.format(seed)
+            dir_path = 'data/generated_data/{}/seed{}'.format(args.problem, seed)
         else:
-            dir_path = 'data/generated_data/hpob_{}/seed{}'.format(args.mode, seed)
+            dir_path = 'data/generated_data/{}_{}/seed{}'.format(args.problem, args.mode, seed)
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
 
@@ -87,6 +95,7 @@ if __name__ == '__main__':
                     print(designer, search_space_id, dataset_id, seed)
                     out_name = dir_path + '/{}_{}_{}_{}.json'.format(designer, search_space_id, dataset_id, seed)
                     cmd = get_cmd(
+                        args.problem,
                         designer,
                         search_space_id, 
                         dataset_id,

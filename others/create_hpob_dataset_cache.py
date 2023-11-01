@@ -11,22 +11,31 @@ logging.basicConfig(level=logging.INFO)
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--problem', type=str, required=True, choices=['hpob', 'synthetic'])
 parser.add_argument('--mode', type=str, default='train', choices=['train', 'test', 'validation'])
 args = parser.parse_args()
 
 mode = args.mode
-with open('./others/hpob-summary-stats/{}-summary-stats.json'.format(mode), 'r') as f:
-    summary_stats = json.load(f)
+if args.problem == 'hpob':
+    with open('./others/hpob-summary-stats/{}-summary-stats.json'.format(mode), 'r') as f:
+        summary_stats = json.load(f)
+elif args.problem == 'synthetic':
+    from problems.synthetic import bbob_func_names
+    summary_stats = {name: [str(i) for i in range(50)] for name in bbob_func_names}
+else:
+    raise NotImplementedError
 
 if mode == 'train':
-    data_dir = 'data/generated_data/hpob/'
-    cache_dir = 'cache/hpob'
+    data_dir = 'data/generated_data/{}/'.format(args.problem)
+    cache_dir = 'cache/{}'.format(args.problem)
 else:
-    data_dir = 'data/generated_data/hpob_{}/'.format(mode)
-    cache_dir = 'cache/hpob_{}'.format(mode)
+    data_dir = 'data/generated_data/{}_{}/'.format(args.problem, mode)
+    cache_dir = 'cache/{}_{}'.format(args.problem, mode)
 
-# for search_space_id in summary_stats:
-for search_space_id in ['6767']:
+for search_space_id in summary_stats:
+# for search_space_id in ['6767', '5906', '7609', '7607', '6794']:
+# for search_space_id in ['Rastrigin']:
+    print('search space: {}'.format(search_space_id))
     dataset = TrajectoryDataset(
         search_space_id=search_space_id,
         data_dir=data_dir,
