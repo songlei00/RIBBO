@@ -16,6 +16,7 @@ from algorithms.utils import log_rollout
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:15]
     args.test_datasets = args.test_datasets[args.id][:15]
+    args.eval_episodes = 1 if args.deterministic_eval else args.eval_episodes
 
 args = parse_args(post_init=post_init)
 exp_name = "-".join([args.id, "seed"+str(args.seed)])
@@ -94,8 +95,8 @@ for i_epoch in trange(1, args.num_epoch+1):
         train_metrics = designer.update(batch, clip_grad=args.clip_grad)
     if i_epoch % args.eval_interval == 0:
         for init_regret in args.init_regrets:
-            eval_test_metrics, _ = evaluate_decision_transformer_designer(problem, designer, args.test_datasets, args.eval_episodes, init_regret)
-            eval_train_metrics, _ = evaluate_decision_transformer_designer(problem, designer, args.train_datasets, args.eval_episodes, init_regret)
+            eval_test_metrics, _ = evaluate_decision_transformer_designer(problem, designer, args.test_datasets, args.eval_episodes, args.deterministic_eval, init_regret)
+            eval_train_metrics, _ = evaluate_decision_transformer_designer(problem, designer, args.train_datasets, args.eval_episodes, args.deterministic_eval, init_regret)
             logger.log_scalars(f"eval_trainset_regret={str(init_regret)}", eval_train_metrics, step=i_epoch)
             logger.log_scalars(f"eval_testset_regret={str(init_regret)}", eval_test_metrics, step=i_epoch)
 
@@ -113,5 +114,5 @@ for i_epoch in trange(1, args.num_epoch+1):
 for mode, datasets in zip(["train", "test"], [args.train_datasets, args.test_datasets]):
     for init_regret in args.init_regrets:
         print(f"Evaluating final rollout on {mode} datasets {datasets} with regret {init_regret} ...")
-        _, eval_records = evaluate_decision_transformer_designer(problem, designer, datasets, args.eval_episodes, init_regret)
+        _, eval_records = evaluate_decision_transformer_designer(problem, designer, datasets, args.eval_episodes, args.deterministic, init_regret)
         log_rollout(logger, 'rollout_{}_regret={}'.format(mode, init_regret), eval_records)

@@ -192,7 +192,7 @@ class DecisionTransformerDesigner(BaseDesigner):
         
 
 @torch.no_grad()
-def evaluate_decision_transformer_designer(problem, designer: DecisionTransformerDesigner, datasets, eval_episode, init_regret):
+def evaluate_decision_transformer_designer(problem, designer: DecisionTransformerDesigner, datasets, eval_episode, deterministic_eval, init_regret):
     print(f"evaluating on {datasets} ...")
     designer.eval()
     id2y, id2normalized_y, id2normalized_onestep_regret = {}, {}, {}
@@ -208,7 +208,7 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
                 last_x=last_x, 
                 last_y=last_normalized_y, 
                 last_regrets=last_normalized_regrets, 
-                determinisitc=True
+                determinisitc=deterministic_eval
             )
             last_normalized_y, info = problem.forward(last_x)
             last_y = info["raw_y"]

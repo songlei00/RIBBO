@@ -191,7 +191,7 @@ class BCTransformerDesigner(BaseDesigner):
 
         
 @torch.no_grad()
-def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, datasets, eval_episode):
+def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, datasets, eval_episode, deterministic_eval):
     print(f"evaluating on {datasets} ...")
     designer.eval()
     id2y, id2normalized_y, id2normalized_onestep_regret = {}, {}, {}
@@ -206,7 +206,7 @@ def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, d
             last_x = designer.suggest(
                 last_x=last_x, 
                 last_y=last_normalized_y, 
-                determinisitc=True
+                determinisitc=deterministic_eval
             )
             last_normalized_y, info = problem.forward(last_x)
             last_y = info["raw_y"]

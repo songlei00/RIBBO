@@ -16,6 +16,7 @@ from algorithms.utils import log_rollout
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:15]
     args.test_datasets = args.test_datasets[args.id][:15]
+    args.eval_episodes = 1 if args.deterministic_eval else args.eval_episodes
 
 args = parse_args(post_init=post_init)
 exp_name = "-".join([args.id, "seed"+str(args.seed)])
@@ -93,8 +94,8 @@ for i_epoch in trange(1, args.num_epoch+1):
         train_metrics = designer.update(batch, clip_grad=args.clip_grad)
     
     if i_epoch % args.eval_interval == 0:
-        eval_test_metrics, _ = evaluate_optformer_designer(problem, designer, args.test_datasets, args.eval_episodes, algo="CMAES")
-        eval_train_metrics, _ = evaluate_optformer_designer(problem, designer, args.train_datasets, args.eval_episodes, algo="CMAES")
+        eval_test_metrics, _ = evaluate_optformer_designer(problem, designer, args.test_datasets, args.eval_episodes, args.deterministic_eval, algo="CMAES")
+        eval_train_metrics, _ = evaluate_optformer_designer(problem, designer, args.train_datasets, args.eval_episodes, args.deterministic_eval, algo="CMAES")
         logger.info(f"Epoch {i_epoch}: \n{eval_train_metrics}\n{eval_test_metrics}")
         logger.log_scalars("eval_trainset", eval_train_metrics, step=i_epoch)
         logger.log_scalars("eval_testset", eval_test_metrics, step=i_epoch)
@@ -108,3 +109,8 @@ for i_epoch in trange(1, args.num_epoch+1):
             object=designer.state_dict(), 
             path=os.path.join(logger.log_dir, "ckpt"),
         )
+        
+# final rollout
+for mode, datasets in zip(['train', 'test'], [args.train_datasets, args.test_datasets]):
+    _, eval_records = evaluate_optformer_designer(problem, designer, datasets, args.eval_episodes, args.deterministic_eval, algo="CMAES")
+    log_rollout(logger, 'rollout_{}'.format(mode), eval_records)

@@ -32,7 +32,8 @@ step_per_epoch = 100
 eval_interval = 20
 log_interval = 1
 save_interval = 500
-eval_episodes = 1
+eval_episodes = 5
+deterministic_eval = True
 
 init_regrets = [0, 50, 100] 
 scale_clip_range = None
