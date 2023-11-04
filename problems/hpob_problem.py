@@ -81,6 +81,7 @@ class HPOBMetaProblem():
         input_seq_len: int=300, 
         normalize_method: str="random",
         scale_clip_range: Optional[List[float]]=None, 
+        augment: bool=False,
         prioritize: bool=False, 
         prioritize_alpha: float=1.0, 
     ):
@@ -99,6 +100,7 @@ class HPOBMetaProblem():
             input_seq_len=input_seq_len, 
             normalize_method=normalize_method, 
             scale_clip_range=scale_clip_range, 
+            augment=augment,
             prioritize=prioritize, 
             prioritize_alpha=prioritize_alpha
         )

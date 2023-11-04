@@ -1,4 +1,5 @@
 from typing import Tuple, List
+from functools import partial
 
 import numpy as np 
 import torch
@@ -73,3 +74,31 @@ def add_auxiliary_points(trajectory, trajectory_list, num_add):
 
 def optimization(trajectory):
     pass
+
+
+def get_increasing_subtrajectory(trajectory, increasing=True):
+    y = trajectory.y
+    increasing_idx_y_pair = sorted(zip(range(len(y)), y), key=lambda x: x[1])
+    sample_idx = list(range(0, len(y), 2))
+    curr_idx_y_pair = [increasing_idx_y_pair[i] for i in sample_idx]
+    curr_idx = list(zip(*(curr_idx_y_pair)))[0]
+
+    if not increasing:
+        curr_idx = sorted(curr_idx)
+
+    curr_X = [trajectory.X[i] for i in curr_idx]
+    curr_y = [trajectory.y[i] for i in curr_idx]
+    metadata = {
+        'designer': 'synthetic',
+        'search_space_id': trajectory.metadata['search_space_id'],
+        'dataset_id': trajectory.metadata['dataset_id'],
+        'length': len(curr_X),
+        'seed': trajectory.metadata['seed'],
+    }
+    curr_t = Trajectory(metadata, curr_X, curr_y)
+    return curr_t
+
+
+augment_transform = (
+    (lambda t: True, partial(get_increasing_subtrajectory, increasing=False), 0.25),
+)

@@ -10,6 +10,7 @@ x_type = "stochastic"
 y_loss_coeff = 0.0
 mix_method = "concat"
 normalize_method = "random"
+augment = False
 prioritize = False
 prioritize_alpha = 1.0
 

@@ -36,6 +36,7 @@ problem = HPOBMetaProblem(
     input_seq_len=args.input_seq_len, 
     normalize_method=args.normalize_method, 
     scale_clip_range=args.scale_clip_range, 
+    augment=args.augment,
     prioritize=args.prioritize, 
     prioritize_alpha=args.prioritize_alpha, 
 )

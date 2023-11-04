@@ -17,6 +17,7 @@ from algorithms.data_filter import (
     map_smally,
     rule_based_filter_dataset,
 )
+from data_augment.operators import augment_transform
 
 
 class TrajectoryDataset():
@@ -28,6 +29,7 @@ class TrajectoryDataset():
         input_seq_len: int=300, 
         normalize_method: str="random",  # choices are ["random", "dataset", "none"]
         scale_clip_range: Optional[List[float]]=None, 
+        augment: bool = False,
         update: bool = False,
     ) -> None:
         cache_dir = os.path.join(cache_dir, search_space_id)
@@ -41,6 +43,18 @@ class TrajectoryDataset():
             assert isinstance(trajectory_list, list)
         self.trajectory_list = trajectory_list
         # self.trajectory_list = filter_designer(self.trajectory_list)
+
+        if augment:
+            augment_trajectory_list = []
+            for filter_fn, transform, ratio in augment_transform:
+                feasible_trajectory = list(filter(filter_fn, self.trajectory_list))
+                augment_num = int(ratio * len(feasible_trajectory))
+                idx = np.random.choice(len(feasible_trajectory), augment_num, replace=False)
+                augment_t = list(map(transform, [feasible_trajectory[i] for i in idx]))
+                augment_trajectory_list.extend(augment_t)
+
+            self.trajectory_list += augment_trajectory_list
+            print('After augmentation, len: {}'.format(len(self.trajectory_list)))
         
         # get raw metrics
         self.id2info, self.global_info = self.get_dataset_info()
@@ -176,7 +190,8 @@ class TrajectoryDataset():
             "x": trajectory.X[start_idx:start_idx+self.input_seq_len], 
             "y": y[start_idx:start_idx+self.input_seq_len].unsqueeze(-1), 
             "regrets": regrets[start_idx:start_idx+self.input_seq_len].unsqueeze(-1), 
-            "algo": torch.LongTensor([self.algo[trajectory.metadata["designer"]]]), 
+            # "algo": torch.LongTensor([self.algo[trajectory.metadata["designer"]]]), 
+            "algo": torch.LongTensor([self.algo.get(trajectory.metadata['designer'], -1)]), 
             "timesteps": timesteps, 
             "masks": torch.ones_like(timesteps).float()
         }
@@ -210,10 +225,11 @@ class TrajectoryDictDataset(TrajectoryDataset, Dataset):
         input_seq_len: int=300, 
         normalize_method: str="random", 
         scale_clip_range: Optional[List[float]]=None, 
+        augment: bool=False,
         update: bool=False, 
         *args, **kwargs
     ):
-        TrajectoryDataset.__init__(self, search_space_id, data_dir, cache_dir, input_seq_len, normalize_method, scale_clip_range, update)
+        TrajectoryDataset.__init__(self, search_space_id, data_dir, cache_dir, input_seq_len, normalize_method, scale_clip_range, augment, update)
         Dataset.__init__(self)
         
     def __getitem__(self, idx):
@@ -228,12 +244,13 @@ class TrajectoryIterableDataset(TrajectoryDataset, IterableDataset):
         input_seq_len: int=300, 
         normalize_method: str="random", 
         scale_clip_range: Optional[List[float]]=None, 
+        augment: bool=False,
         update: bool=False, 
         prioritize: bool=False, 
         prioritize_alpha: float=1.0, 
         *args, **kwargs
     ):
-        TrajectoryDataset.__init__(self, search_space_id, data_dir, cache_dir, input_seq_len, normalize_method, scale_clip_range, update)
+        TrajectoryDataset.__init__(self, search_space_id, data_dir, cache_dir, input_seq_len, normalize_method, scale_clip_range, augment, update)
         IterableDataset.__init__(self)
         
         self.prioritize = prioritize

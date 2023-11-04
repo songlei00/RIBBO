@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Union, Tuple, Sequence
 try:
     import ujson as json
 except:
@@ -15,9 +15,17 @@ from datasets.metrics import (
 
 
 class Trajectory:
-    def __init__(self, metadata, X, y):
-        self.metadata: dict = metadata
-        self.X = torch.as_tensor(X)
+    def __init__(
+        self,
+        metadata: Dict,
+        X: Union[Tuple[Sequence], Tuple[torch.Tensor]],
+        y: Tuple,
+    ):
+        self.metadata = metadata
+        if isinstance(X[0], torch.Tensor):
+            self.X = torch.vstack(X)
+        else:
+            self.X = torch.as_tensor(X)
         self.y = torch.as_tensor(y)
 
     def __len__(self):

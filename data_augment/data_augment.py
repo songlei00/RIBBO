@@ -15,4 +15,3 @@ def get_augmented_dataset(base_dataset, num_augmented, operators: List[Callable]
         augmented_list.append(augmented_trajectory)
 
     return TrajectoryDataset(augmented_list)
-    
