@@ -42,9 +42,9 @@ class DecisionTransformer(GPT2):
         if self.add_bos:
             self.bos_x_embed = NoDecayParameter(torch.zeros([1, embed_dim]).float(), requires_grad=True)
             self.bos_y_embed = NoDecayParameter(torch.zeros([1, embed_dim]).float(), requires_grad=True)
-            torch.init.normal_(self.bos_x_embed)
-            torch.init.normal_(self.bos_y_embed)
-        self.pos_encoding = get_pos_encoding(pos_encoding, embed_dim, seq_len)
+            torch.nn.init.normal_(self.bos_x_embed)
+            torch.nn.init.normal_(self.bos_y_embed)
+        self.pos_encoding = get_pos_encoding(pos_encoding, embed_dim, seq_len+1)
         self.x_embed = nn.Linear(x_dim, embed_dim)
         self.y_embed = nn.Linear(y_dim, embed_dim)
         self.regret_embed = nn.Linear(1, embed_dim)
@@ -53,7 +53,7 @@ class DecisionTransformer(GPT2):
         # how to mix the inputs
         self.mix_method = mix_method
         if self.mix_method == "concat":
-            self.input_proj = MLP(input_dim=2*embed_dim, hidden_dims=[embed_dim, embed_dim, ])
+            self.input_proj = MLP(input_dim=3*embed_dim, hidden_dims=[embed_dim, embed_dim, ])
             # self.input_proj = nn.Linear(3*embed_dim, embed_dim)
             
     def encode(self, x, y, regrets, timesteps, key_padding_mask):

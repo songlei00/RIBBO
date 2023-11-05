@@ -125,11 +125,11 @@ class DecisionTransformerDesigner(BaseDesigner):
             x=self.past_x[:, :self.step_count+1][:, -self.input_seq_len:], 
             y=self.past_y[:, :self.step_count+1][:, -self.input_seq_len:], 
             regrets_to_go=self.past_regrets[:, :self.step_count+1][:, -self.input_seq_len:] if self.use_abs_timestep else None, 
-            timesteps=self.timesteps[:, :self.step_count+1], 
+            timesteps=self.timesteps[:, :self.step_count+1][:, -self.input_seq_len:] if self.use_abs_timestep else None, 
             attention_mask=None, 
             key_padding_mask=None # during testing all positions are valid
         )
-        suggest_x = self.x_head.sample(x_pred[:, self.step_count], deterministic=determinisitc)[0]
+        suggest_x = self.x_head.sample(x_pred[:, -1], deterministic=determinisitc)[0]
         return suggest_x
     
     def update(self, batch: Dict[str, Any], clip_grad: Optional[float]=None):
