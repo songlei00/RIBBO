@@ -107,7 +107,7 @@ class DecisionTransformerDesigner(BaseDesigner):
         last_x=None, 
         last_y=None, 
         last_regrets=None, 
-        determinisitc=False, 
+        deterministic=False, 
         *args, **kwargs
     ):
         if (
@@ -130,7 +130,7 @@ class DecisionTransformerDesigner(BaseDesigner):
             attention_mask=None, 
             key_padding_mask=None # during testing all positions are valid
         )
-        suggest_x = self.x_head.sample(x_pred[:, -1], deterministic=determinisitc)[0]
+        suggest_x = self.x_head.sample(x_pred[:, -1], deterministic=deterministic)[0]
         return suggest_x
     
     def update(self, batch: Dict[str, Any], clip_grad: Optional[float]=None):
@@ -211,7 +211,7 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
                 last_x=last_x, 
                 last_y=last_normalized_y, 
                 last_regrets=last_normalized_regrets, 
-                determinisitc=deterministic_eval
+                deterministic=deterministic_eval
             )
             last_normalized_y, info = problem.forward(last_x)
             last_y = info["raw_y"]

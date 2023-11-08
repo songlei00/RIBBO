@@ -105,7 +105,7 @@ class BCTransformerDesigner(BaseDesigner):
         self, 
         last_x=None, 
         last_y=None, 
-        determinisitc=False, 
+        deterministic=False, 
         *args, **kwargs
     ):
         if last_x is not None and last_y is not None:
@@ -123,7 +123,7 @@ class BCTransformerDesigner(BaseDesigner):
             key_padding_mask=None # during testing all positions are valid
         )
         suggest_x = self.x_head.sample(
-            x_pred[:, -1], deterministic=determinisitc
+            x_pred[:, -1], deterministic=deterministic
         )[0]
         return suggest_x
     
@@ -206,7 +206,7 @@ def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, d
             last_x = designer.suggest(
                 last_x=last_x, 
                 last_y=last_normalized_y, 
-                determinisitc=deterministic_eval
+                deterministic=deterministic_eval
             )
             last_normalized_y, info = problem.forward(last_x)
             last_y = info["raw_y"]
