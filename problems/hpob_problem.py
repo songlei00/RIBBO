@@ -33,6 +33,7 @@ class HPOBProblem(ProblemBase):
         dataset_id: str,
         root_dir: str, 
         noise_std: float = 0,
+        nthread: int = 4,
     ):
         assert search_space_id.isnumeric()
         assert dataset_id.isnumeric()
@@ -44,6 +45,7 @@ class HPOBProblem(ProblemBase):
         self.surrogate_name = 'surrogate-' + search_space_id + '-' + dataset_id
         self.bst_surrogate = xgb.Booster()
         self.bst_surrogate.load_model(os.path.join(root_dir, 'saved-surrogates', self.surrogate_name+'.json'))
+        self.bst_surrogate.set_param({'nthread': nthread})
 
         self.dim = self.bst_surrogate.num_features()
         self.lb = torch.zeros(self.dim)
@@ -84,14 +86,15 @@ class HPOBMetaProblem():
         augment: bool=False,
         prioritize: bool=False, 
         prioritize_alpha: float=1.0, 
+        nthread: int=4,
     ):
         assert search_space_id.isnumeric()
         self.search_space_id = search_space_id
         self.root_dir = root_dir
         self.input_seq_len = input_seq_len
         self.scale_clip_range = scale_clip_range
+        self.nthread = nthread
 
-        self.bst_surrogate = xgb.Booster()
         self.name = 'HPOB_{}'.format(search_space_id)
         self.dataset = TrajectoryIterableDataset(
             search_space_id=search_space_id,
@@ -123,6 +126,8 @@ class HPOBMetaProblem():
         self.cheat_table = {}
         if self.search_space_id in self.cheat_table:
             print('Use cheat table for search space id {}'.format(self.search_space_id))
+
+        self.bst_cache = {}
         
     def get_problem_info(self):
         sample_data = self.dataset.trajectory_list[0]
@@ -139,11 +144,17 @@ class HPOBMetaProblem():
     def reset_task(self, dataset_id: str):
         self.dataset_id = dataset_id
         self.surrogate_name = 'surrogate-'+self.search_space_id+'-'+dataset_id
-        self.bst_surrogate.load_model(os.path.join(
-            self.root_dir, 
-            'saved-surrogates', 
-            self.surrogate_name+'.json'
-        ))
+        if dataset_id not in self.bst_cache:
+            bst_surrogate = xgb.Booster()
+            bst_surrogate.load_model(os.path.join(
+                self.root_dir, 
+                'saved-surrogates', 
+                self.surrogate_name+'.json'
+            ))
+            bst_surrogate.set_param({'nthread': self.nthread})
+            self.bst_cache[dataset_id] = bst_surrogate
+
+        self.bst_surrogate = self.bst_cache[dataset_id]
         
     def forward(self, X: torch.Tensor):
         assert X.ndim == 2

@@ -1,3 +1,4 @@
+import time
 from typing import Optional, Sequence, Union, Dict, Any
 
 import torch
@@ -196,7 +197,9 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
     print(f"evaluating on {datasets} ...")
     designer.eval()
     id2y, id2normalized_y, id2normalized_onestep_regret = {}, {}, {}
+
     for id in datasets:
+        st = time.monotonic()
         problem.reset_task(id)
         designer.reset(eval_episode, init_regret)
         last_x, last_y, last_normalized_y, last_normalized_regrets = None, None, None, init_regret
@@ -221,6 +224,9 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
         id2y[id] = this_y
         id2normalized_y[id] = this_normalized_y
         id2normalized_onestep_regret[id] = this_normalized_onestep_regret
+
+        et = time.monotonic()
+        # print('eval time for dataset {}: {}'.format(id, et-st))
         
     metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, id2normalized_onestep_regret)
     
