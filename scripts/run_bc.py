@@ -10,6 +10,7 @@ from UtilsRL.logger import CompositeLogger
 from algorithms.designers.bc_designer import BCTransformerDesigner, evaluate_bc_transformer_designer
 from algorithms.modules.bc import BCTransformer
 from problems.hpob_problem import HPOBMetaProblem
+from problems.synthetic import SyntheticMetaProblem
 from datasets.datasets import TrajectoryDataset
 from algorithms.utils import log_rollout
 
@@ -28,18 +29,35 @@ logger.log_config(args)
 setup(args, logger)
 
 # define the problem and the dataset
-problem = HPOBMetaProblem(
-    search_space_id=args.id, 
-    root_dir=args.hpob_root_dir, 
-    data_dir=args.data_dir,
-    cache_dir=args.cache_dir, 
-    input_seq_len=args.input_seq_len, 
-    normalize_method=args.normalize_method, 
-    scale_clip_range=args.scale_clip_range, 
-    augment=args.augment,
-    prioritize=args.prioritize, 
-    prioritize_alpha=args.prioritize_alpha, 
-)
+if args.problem == 'hpob':
+    problem = HPOBMetaProblem(
+        search_space_id=args.id, 
+        root_dir=args.root_dir, 
+        data_dir=args.data_dir,
+        cache_dir=args.cache_dir, 
+        input_seq_len=args.input_seq_len, 
+        normalize_method=args.normalize_method, 
+        scale_clip_range=args.scale_clip_range, 
+        augment=args.augment,
+        prioritize=args.prioritize, 
+        prioritize_alpha=args.prioritize_alpha, 
+    )
+elif args.problem == 'synthetic':
+    problem = SyntheticMetaProblem(
+        search_space_id=args.id, 
+        root_dir=args.root_dir, 
+        data_dir=args.data_dir,
+        cache_dir=args.cache_dir, 
+        input_seq_len=args.input_seq_len, 
+        normalize_method=args.normalize_method, 
+        scale_clip_range=args.scale_clip_range, 
+        augment=args.augment,
+        prioritize=args.prioritize, 
+        prioritize_alpha=args.prioritize_alpha, 
+    )
+else:
+    raise NotImplementedError
+
 dataset = problem.get_dataset()
 
 logger.info('dataset length: {}'.format(len(dataset)))

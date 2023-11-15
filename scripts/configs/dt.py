@@ -1,5 +1,6 @@
 from UtilsRL.misc.namespace import NameSpace
 
+problem = 'hpob'
 seed = 0
 debug = False
 name = "dt"
@@ -10,6 +11,7 @@ x_type = "stochastic"
 y_loss_coeff = 0.0
 mix_method = "concat"
 normalize_method = "random"
+augment = False
 prioritize = False
 prioritize_alpha = 1.0
 
@@ -38,7 +40,7 @@ deterministic_eval = True
 init_regrets = [0, 50, 100] 
 scale_clip_range = None
 
-hpob_root_dir = "./data/downloaded_data/hpob/"
+root_dir = "./data/downloaded_data/hpob/"
 data_dir = './data/generated_data/hpob'
 cache_dir = "./cache/hpob"
 

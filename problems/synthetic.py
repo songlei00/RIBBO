@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, List
+from typing import Any, Optional, List
 from functools import partial
 
 import numpy as np
@@ -38,7 +38,7 @@ for name in bbob_func_names:
 log = logging.getLogger(__name__)
 
 
-class SyntheticNumpy(ProblemBase):
+class SyntheticNumpy:
     def __init__(
         self,
         search_space_id: str,
@@ -57,6 +57,9 @@ class SyntheticNumpy(ProblemBase):
         self.lb = np.ones(dim) * lb
         self.ub = np.ones(dim) * ub
         self.name = 'Synthetic_{}'.format(search_space_id)
+
+    def __call__(self, X) -> Any:
+        return self.forward(X)
 
     def forward(self, X: np.ndarray) -> np.ndarray:
         assert (X >= self.lb).all() and (X <= self.ub).all()
@@ -105,19 +108,19 @@ class SyntheticMetaProblem:
         input_seq_len: int = 300,
         normalize_method: str = 'random',
         scale_clip_range: Optional[List[float]] = None,
+        augment: bool = False,
         prioritize: bool = False,
         prioritize_alpha: float = 1.0,
     ):
         self.dim = 10
         self.lb, self.ub = -5, 5
         self.search_space_id = search_space_id
-        self.root_dir = root_dir
         self.input_seq_len = input_seq_len
         self.scale_clip_range = scale_clip_range
 
         self.func = SyntheticNumpy(
             self.search_space_id,
-            self.dataset_id,
+            '0',
             self.dim,
             self.lb,
             self.ub,

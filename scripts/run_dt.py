@@ -13,6 +13,7 @@ from UtilsRL.logger import CompositeLogger
 from algorithms.designers.dt_designer import DecisionTransformerDesigner, evaluate_decision_transformer_designer
 from algorithms.modules.dt import DecisionTransformer
 from problems.hpob_problem import HPOBMetaProblem
+from problems.synthetic import SyntheticMetaProblem
 from datasets.datasets import TrajectoryDataset
 from algorithms.utils import log_rollout
 
@@ -31,17 +32,35 @@ logger.log_config(args)
 setup(args, logger)
 
 # define the problem and the dataset
-problem = HPOBMetaProblem(
-    search_space_id=args.id, 
-    root_dir=args.hpob_root_dir, 
-    data_dir=args.data_dir,
-    cache_dir=args.cache_dir, 
-    input_seq_len=args.input_seq_len, 
-    normalize_method=args.normalize_method, 
-    scale_clip_range=args.scale_clip_range, 
-    prioritize=args.prioritize, 
-    prioritize_alpha=args.prioritize_alpha, 
-)
+if args.problem == 'hpob':
+    problem = HPOBMetaProblem(
+        search_space_id=args.id, 
+        root_dir=args.root_dir, 
+        data_dir=args.data_dir,
+        cache_dir=args.cache_dir, 
+        input_seq_len=args.input_seq_len, 
+        normalize_method=args.normalize_method, 
+        scale_clip_range=args.scale_clip_range, 
+        augment=args.augment,
+        prioritize=args.prioritize, 
+        prioritize_alpha=args.prioritize_alpha, 
+    )
+elif args.problem == 'synthetic':
+    problem = SyntheticMetaProblem(
+        search_space_id=args.id, 
+        root_dir=args.root_dir, 
+        data_dir=args.data_dir,
+        cache_dir=args.cache_dir, 
+        input_seq_len=args.input_seq_len, 
+        normalize_method=args.normalize_method, 
+        scale_clip_range=args.scale_clip_range, 
+        augment=args.augment,
+        prioritize=args.prioritize, 
+        prioritize_alpha=args.prioritize_alpha, 
+    )
+else:
+    raise NotImplementedError
+
 dataset = problem.get_dataset()
 
 logger.info('dataset length: {}'.format(len(dataset)))
@@ -122,5 +141,5 @@ for i_epoch in trange(1, args.num_epoch+1):
 for mode, datasets in zip(["train", "test"], [args.train_datasets, args.test_datasets]):
     for init_regret in args.init_regrets:
         print(f"Evaluating final rollout on {mode} datasets {datasets} with regret {init_regret} ...")
-        _, eval_records = evaluate_decision_transformer_designer(problem, designer, datasets, args.eval_episodes, args.deterministic, init_regret)
+        _, eval_records = evaluate_decision_transformer_designer(problem, designer, datasets, args.eval_episodes, args.deterministic_eval, init_regret)
         log_rollout(logger, 'rollout_{}_regret={}'.format(mode, init_regret), eval_records)
