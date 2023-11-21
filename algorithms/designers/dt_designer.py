@@ -98,7 +98,7 @@ class DecisionTransformerDesigner(BaseDesigner):
         self.past_y = torch.zeros([eval_num, self.seq_len+1, 1], dtype=torch.float).to(self.device)
         self.past_regrets = torch.zeros([eval_num, self.seq_len+1, 1], dtype=torch.float).to(self.device)
         self.past_regrets[:, 0] = init_regret
-        self.timesteps = torch.arange(self.seq_len+1).long().to(self.device).reshape(1, self.seq_len+1)
+        self.timesteps = torch.arange(self.seq_len+1).long().to(self.device).reshape(1, self.seq_len+1).repeat(eval_num, 1)
         self.step_count = 0
         
     @torch.no_grad()
