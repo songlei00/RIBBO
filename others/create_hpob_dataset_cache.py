@@ -46,3 +46,4 @@ for search_space_id in summary_stats:
 
     print('length:', len(dataset))
     print('x dim:', dataset.trajectory_list[0].X.shape[1])
+    print(dataset.global_info)

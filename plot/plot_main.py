@@ -46,25 +46,32 @@ def group_fn(trajectory):
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--problem', type=str, required=True)
 parser.add_argument('--mode', type=str, default='train', choices=['train', 'test', 'validation'])
 args = parser.parse_args()
 
 mode = args.mode
-with open('others/hpob-summary-stats/{}-summary-stats.json'.format(mode), 'r') as f:
-    meta_data = json.load(f)
+if args.problem == 'hpob':
+    with open('others/hpob-summary-stats/{}-summary-stats.json'.format(mode), 'r') as f:
+        meta_data = json.load(f)
+elif args.problem == 'synthetic':
+    from problems.synthetic import bbob_func_names
+    meta_data = {name: [str(i) for i in range(50)] for name in bbob_func_names}
+else:
+    raise NotImplementedError
 
 if mode == 'train':
-    save_dir = 'plot/hpob'
-    path = 'cache/hpob'
+    save_dir = 'plot/{}'.format(args.problem)
+    path = 'cache/{}'.format(args.problem)
 else:
-    save_dir = 'plot/hpob_{}'.format(mode)
-    path = 'cache/hpob_{}'.format(mode)
+    save_dir = 'plot/{}_{}'.format(args.problem, mode)
+    path = 'cache/{}_{}'.format(args.problem, mode)
 
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
-# for search_space_id in meta_data:
-for search_space_id in ['6767']:
+for search_space_id in meta_data:
+# for search_space_id in ['6767']:
     trajectory_dataset = TrajectoryDataset(
         search_space_id,
         '',

@@ -25,6 +25,7 @@ pos_encoding = "sinusoidal"
 clip_grad = None
 use_abs_timestep = True
 input_seq_len = 300
+max_input_seq_len = 300
 scale_clip_range = None
 
 batch_size = 256

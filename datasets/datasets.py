@@ -27,6 +27,7 @@ class TrajectoryDataset():
         data_dir: str,
         cache_dir: str, 
         input_seq_len: int=300, 
+        max_input_seq_len: int=300,
         normalize_method: str="random",  # choices are ["random", "dataset", "none"]
         scale_clip_range: Optional[List[float]]=None, 
         augment: bool = False,
@@ -43,6 +44,10 @@ class TrajectoryDataset():
             assert isinstance(trajectory_list, list)
         self.trajectory_list = trajectory_list
         # self.trajectory_list = filter_designer(self.trajectory_list)
+        for t in self.trajectory_list:
+            t.X = t.X[: max_input_seq_len]
+            t.y = t.y[: max_input_seq_len]
+            t.metadata['length'] = max_input_seq_len
 
         if augment:
             augment_trajectory_list = []
@@ -242,6 +247,7 @@ class TrajectoryIterableDataset(TrajectoryDataset, IterableDataset):
         data_dir: str, 
         cache_dir: str, 
         input_seq_len: int=300, 
+        max_input_seq_len: int=300,
         normalize_method: str="random", 
         scale_clip_range: Optional[List[float]]=None, 
         augment: bool=False,
@@ -250,7 +256,7 @@ class TrajectoryIterableDataset(TrajectoryDataset, IterableDataset):
         prioritize_alpha: float=1.0, 
         *args, **kwargs
     ):
-        TrajectoryDataset.__init__(self, search_space_id, data_dir, cache_dir, input_seq_len, normalize_method, scale_clip_range, augment, update)
+        TrajectoryDataset.__init__(self, search_space_id, data_dir, cache_dir, input_seq_len, max_input_seq_len, normalize_method, scale_clip_range, augment, update)
         IterableDataset.__init__(self)
         
         self.prioritize = prioritize
