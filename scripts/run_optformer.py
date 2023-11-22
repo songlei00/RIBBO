@@ -10,14 +10,18 @@ from UtilsRL.logger import CompositeLogger
 from algorithms.designers.optformer_designer import OptFormerDesigner, evaluate_optformer_designer
 from algorithms.modules.optformer import OptFormerTransformer
 from problems.hpob_problem import HPOBMetaProblem
-from datasets.datasets import TrajectoryDataset
+from problems.synthetic import SyntheticMetaProblem
 from algorithms.utils import log_rollout
 
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:15]
     args.test_datasets = args.test_datasets[args.id][:15]
     args.eval_episodes = 1 if args.deterministic_eval else args.eval_episodes
-
+    args.problem_cls = {
+        "hpob": HPOBMetaProblem, 
+        "synthetic": SyntheticMetaProblem
+    }.get(args.problem)
+    
 args = parse_args(post_init=post_init)
 exp_name = "-".join([args.id, "seed"+str(args.seed)])
 logger = CompositeLogger(log_dir=f"./log/{args.name}", name=exp_name, logger_config={
@@ -28,17 +32,21 @@ logger.log_config(args)
 setup(args, logger)
 
 # define the problem and the dataset
-problem = HPOBMetaProblem(
+logger.info(f"Training on problem: {args.problem}")
+problem = args.problem_cls(
     search_space_id=args.id, 
-    root_dir=args.hpob_root_dir, 
+    root_dir=args.root_dir, 
     data_dir=args.data_dir,
     cache_dir=args.cache_dir, 
     input_seq_len=args.input_seq_len, 
+    max_input_seq_len=args.max_input_seq_len,
     normalize_method=args.normalize_method, 
     scale_clip_range=args.scale_clip_range, 
+    augment=args.augment,
     prioritize=args.prioritize, 
     prioritize_alpha=args.prioritize_alpha, 
 )
+
 dataset = problem.get_dataset()
 
 logger.info('dataset length: {}'.format(len(dataset)))

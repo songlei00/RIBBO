@@ -3,7 +3,7 @@ from UtilsRL.misc.namespace import NameSpace
 problem = 'hpob'
 seed = 0
 debug = False
-name = "bc"
+name = "dt"
 
 id = "6767"
 
@@ -15,33 +15,35 @@ augment = False
 prioritize = False
 prioritize_alpha = 1.0
 
-embed_dim = 256
-num_layers = 4
+embed_dim = 128
+num_layers = 12
 num_heads = 4
 attention_dropout = 0.1
 residual_dropout = 0.1
 embed_dropout = 0.1
-pos_encoding = "sinusoidal"
+pos_encoding = "embed"
 clip_grad = None
 use_abs_timestep = True
 input_seq_len = 300
 max_input_seq_len = 300
 scale_clip_range = None
 
-batch_size = 256
+batch_size = 128
 num_workers = 4
 
-num_epoch = 1000
+num_epoch = 5000
 step_per_epoch = 100
-eval_interval = 20
+eval_interval = 250
 log_interval = 1
 save_interval = 500
 eval_episodes = 5
-deterministic_eval = True
+deterministic_eval = False
+
+init_regrets = [0, 20, 50] 
 
 root_dir = "./data/downloaded_data/hpob/"
 data_dir = './data/generated_data/hpob'
-cache_dir = "./cache/hpob"
+cache_dir = "./cache/hpob/"
 
 class optimizer_args(NameSpace):
     lr = 2e-4
@@ -53,7 +55,7 @@ class wandb(NameSpace):
     entity = "lamda-rl"
     project = "IBO"
 
-from scripts.configs.dataset_specs import (
+from scripts.configs.dataset_specs_hpob import (
     train_datasets, 
     test_datasets, 
 )

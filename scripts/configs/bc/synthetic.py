@@ -1,9 +1,9 @@
 from UtilsRL.misc.namespace import NameSpace
 
-problem = 'synthetic'
+problem = "synthetic"
 seed = 0
 debug = False
-name = "dt"
+name = "bc"
 
 id = "Rastrigin"
 
@@ -24,25 +24,24 @@ embed_dropout = 0.1
 pos_encoding = "embed"
 clip_grad = None
 use_abs_timestep = True
-input_seq_len = 100
+input_seq_len = 300
+max_input_seq_len = 300
+scale_clip_range = None
 
 batch_size = 128
 num_workers = 4
 
-num_epoch = 1000
+num_epoch = 5000
 step_per_epoch = 100
-eval_interval = 50
+eval_interval = 250
 log_interval = 1
 save_interval = 500
 eval_episodes = 5
-deterministic_eval = True
-
-init_regrets = [0, 50, 100] 
-scale_clip_range = None
+deterministic_eval = False
 
 root_dir = None
-data_dir = './data/generated_data/synthetic'
-cache_dir = "./cache/synthetic"
+data_dir = "./data/generated_data/syntheic/"
+cache_dir = "./cache/synthetic/"
 
 class optimizer_args(NameSpace):
     lr = 2e-4
@@ -52,7 +51,7 @@ class optimizer_args(NameSpace):
     
 class wandb(NameSpace):
     entity = "lamda-rl"
-    project = "IBO-benchmark"
+    project = "IBO"
 
 from scripts.configs.dataset_specs_synthetic import (
     train_datasets, 

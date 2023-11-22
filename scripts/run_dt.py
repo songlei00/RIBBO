@@ -14,13 +14,16 @@ from algorithms.designers.dt_designer import DecisionTransformerDesigner, evalua
 from algorithms.modules.dt import DecisionTransformer
 from problems.hpob_problem import HPOBMetaProblem
 from problems.synthetic import SyntheticMetaProblem
-from datasets.datasets import TrajectoryDataset
 from algorithms.utils import log_rollout
 
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:15]
     args.test_datasets = args.test_datasets[args.id][:15]
     args.eval_episodes = 1 if args.deterministic_eval else args.eval_episodes
+    args.problem_cls = {
+        "hpob": HPOBMetaProblem, 
+        "synthetic": SyntheticMetaProblem
+    }.get(args.problem)
 
 args = parse_args(post_init=post_init)
 exp_name = "-".join([args.id, "seed"+str(args.seed)])
@@ -32,36 +35,20 @@ logger.log_config(args)
 setup(args, logger)
 
 # define the problem and the dataset
-if args.problem == 'hpob':
-    problem = HPOBMetaProblem(
-        search_space_id=args.id, 
-        root_dir=args.root_dir, 
-        data_dir=args.data_dir,
-        cache_dir=args.cache_dir, 
-        input_seq_len=args.input_seq_len, 
-        max_input_seq_len=args.max_input_seq_len,
-        normalize_method=args.normalize_method, 
-        scale_clip_range=args.scale_clip_range, 
-        augment=args.augment,
-        prioritize=args.prioritize, 
-        prioritize_alpha=args.prioritize_alpha, 
-    )
-elif args.problem == 'synthetic':
-    problem = SyntheticMetaProblem(
-        search_space_id=args.id, 
-        root_dir=args.root_dir, 
-        data_dir=args.data_dir,
-        cache_dir=args.cache_dir, 
-        input_seq_len=args.input_seq_len,  
-        max_input_seq_len=args.max_input_seq_len,
-        normalize_method=args.normalize_method, 
-        scale_clip_range=args.scale_clip_range, 
-        augment=args.augment,
-        prioritize=args.prioritize, 
-        prioritize_alpha=args.prioritize_alpha, 
-    )
-else:
-    raise NotImplementedError
+logger.info(f"Training on problem: {args.problem}")
+problem = args.problem.cls(
+    search_space_id=args.id, 
+    root_dir=args.root_dir, 
+    data_dir=args.data_dir,
+    cache_dir=args.cache_dir, 
+    input_seq_len=args.input_seq_len, 
+    max_input_seq_len=args.max_input_seq_len,
+    normalize_method=args.normalize_method, 
+    scale_clip_range=args.scale_clip_range, 
+    augment=args.augment,
+    prioritize=args.prioritize, 
+    prioritize_alpha=args.prioritize_alpha, 
+)
 
 dataset = problem.get_dataset()
 
