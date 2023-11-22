@@ -191,7 +191,13 @@ class BCTransformerDesigner(BaseDesigner):
 
         
 @torch.no_grad()
-def evaluate_bc_transformer_designer(problem, designer: BCTransformerDesigner, datasets, eval_episode, deterministic_eval):
+def evaluate_bc_transformer_designer(
+    problem, 
+    designer: BCTransformerDesigner, 
+    datasets, 
+    eval_episode, 
+    deterministic_eval
+):
     print(f"evaluating on {datasets} ...")
     designer.eval()
     id2y, id2normalized_y, id2normalized_onestep_regret = {}, {}, {}

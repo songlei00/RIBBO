@@ -36,7 +36,7 @@ setup(args, logger)
 
 # define the problem and the dataset
 logger.info(f"Training on problem: {args.problem}")
-problem = args.problem.cls(
+problem = args.problem_cls(
     search_space_id=args.id, 
     root_dir=args.root_dir, 
     data_dir=args.data_dir,
@@ -100,21 +100,15 @@ trainloader = DataLoader(
 train_iter = iter(trainloader)
 
 for i_epoch in trange(1, args.num_epoch+1):
-    st = time.monotonic()
     for i_batch in range(args.step_per_epoch):
         batch = next(train_iter)
         train_metrics = designer.update(batch, clip_grad=args.clip_grad)
-    et = time.monotonic()
-    # print('training time: {}'.format(et - st))
     if i_epoch % args.eval_interval == 0:
         for init_regret in args.init_regrets:
-            st = time.monotonic()
-            eval_test_metrics, _ = evaluate_decision_transformer_designer(problem, designer, args.test_datasets, args.eval_episodes, args.deterministic_eval, init_regret)
-            eval_train_metrics, _ = evaluate_decision_transformer_designer(problem, designer, args.train_datasets, args.eval_episodes, args.deterministic_eval, init_regret)
+            eval_test_metrics, _ = evaluate_decision_transformer_designer(problem, designer, args.test_datasets, args.eval_episodes, args.deterministic_eval, init_regret, args.regret_strategy)
+            eval_train_metrics, _ = evaluate_decision_transformer_designer(problem, designer, args.train_datasets, args.eval_episodes, args.deterministic_eval, init_regret, args.regret_strategy)
             logger.log_scalars(f"eval_trainset_regret={str(init_regret)}", eval_train_metrics, step=i_epoch)
             logger.log_scalars(f"eval_testset_regret={str(init_regret)}", eval_test_metrics, step=i_epoch)
-            et = time.monotonic()
-            print('eval time for regret {}: {}'.format(init_regret, et - st))
 
     if i_epoch % args.log_interval == 0:
         logger.log_scalars("", train_metrics, step=i_epoch)
@@ -130,5 +124,5 @@ for i_epoch in trange(1, args.num_epoch+1):
 for mode, datasets in zip(["train", "test"], [args.train_datasets, args.test_datasets]):
     for init_regret in args.init_regrets:
         print(f"Evaluating final rollout on {mode} datasets {datasets} with regret {init_regret} ...")
-        _, eval_records = evaluate_decision_transformer_designer(problem, designer, datasets, args.eval_episodes, args.deterministic_eval, init_regret)
+        _, eval_records = evaluate_decision_transformer_designer(problem, designer, datasets, args.eval_episodes, args.deterministic_eval, init_regret, args.regret_strategy)
         log_rollout(logger, 'rollout_{}_regret={}'.format(mode, init_regret), eval_records)

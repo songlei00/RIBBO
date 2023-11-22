@@ -204,7 +204,14 @@ class OptFormerDesigner(BaseDesigner):
 
         
 @torch.no_grad()
-def evaluate_optformer_designer(problem, designer: OptFormerDesigner, datasets, eval_episode, deterministic_eval, algo):
+def evaluate_optformer_designer(
+    problem, 
+    designer: OptFormerDesigner, 
+    datasets, 
+    eval_episode, 
+    deterministic_eval, 
+    algo
+):
     print(f"evaluating on {datasets} ...")
     designer.eval()
     id2y, id2normalized_y, id2normalized_onestep_regret = {}, {}, {}

@@ -106,8 +106,9 @@ class DecisionTransformerDesigner(BaseDesigner):
         self, 
         last_x=None, 
         last_y=None, 
-        last_regrets=None, 
+        last_onestep_regret=None, 
         deterministic=False, 
+        regret_strategy="none", 
         *args, **kwargs
     ):
         if (
@@ -116,10 +117,19 @@ class DecisionTransformerDesigner(BaseDesigner):
         ):
             last_x = torch.as_tensor(last_x).float().to(self.device)
             last_y = torch.as_tensor(last_y).float().to(self.device)
-            last_regrets = torch.as_tensor(last_regrets).float().to(self.device)
+            last_onestep_regret = torch.as_tensor(last_onestep_regret).to(self.device)
             self.past_x[:, self.step_count] = last_x
             self.past_y[:, self.step_count] = last_y
-            self.past_regrets[:, self.step_count+1] = last_regrets
+            if regret_strategy == "none":
+                # set the regret regardlessly
+                self.past_regrets[:, self.step_count+1] = self.past_regrets[:, self.step_count] - last_onestep_regret
+            elif regret_strategy == "clip":
+                # set the regret, clipped to [0, +\infty]
+                self.past_regrets[:, self.step_count+1] = (self.past_regrets[:, self.step_count] - last_onestep_regret).clip(0.0, 9e9)
+            elif regret_strategy == "relabel":
+                neg_diff = (self.past_regrets[:, self.step_count] - last_onestep_regret).clip(-9e9, 0.0)
+                self.past_regrets[:, self.step_count+1] = self.past_regrets[:, self.step_count] - last_onestep_regret
+                self.past_regrets[:, :self.step_count+2] -= neg_diff.unsqueeze(1)
             self.step_count += 1
         
         x_pred, *_ = self.transformer(
@@ -193,16 +203,23 @@ class DecisionTransformerDesigner(BaseDesigner):
         
 
 @torch.no_grad()
-def evaluate_decision_transformer_designer(problem, designer: DecisionTransformerDesigner, datasets, eval_episode, deterministic_eval, init_regret):
+def evaluate_decision_transformer_designer(
+    problem, 
+    designer: DecisionTransformerDesigner, 
+    datasets, 
+    eval_episode, 
+    deterministic_eval, 
+    init_regret, 
+    regret_strategy
+):
     print(f"evaluating on {datasets} ...")
     designer.eval()
     id2y, id2normalized_y, id2normalized_onestep_regret = {}, {}, {}
 
     for id in datasets:
-        st = time.monotonic()
         problem.reset_task(id)
         designer.reset(eval_episode, init_regret)
-        last_x, last_y, last_normalized_y, last_normalized_regrets = None, None, None, init_regret
+        last_x, last_y, last_normalized_y, last_normalized_onestep_regret = None, None, None, None
         this_y = np.zeros([eval_episode, problem.seq_len, 1])
         this_normalized_y = np.zeros([eval_episode, problem.seq_len, 1])
         this_normalized_onestep_regret = np.zeros([eval_episode, problem.seq_len, 1])
@@ -210,13 +227,13 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
             last_x = designer.suggest(
                 last_x=last_x, 
                 last_y=last_normalized_y, 
-                last_regrets=last_normalized_regrets, 
-                deterministic=deterministic_eval
+                last_onestep_regret=last_normalized_onestep_regret, 
+                deterministic=deterministic_eval, 
+                regret_strategy=regret_strategy, 
             )
             last_normalized_y, info = problem.forward(last_x)
             last_y = info["raw_y"]
             last_normalized_onestep_regret = info["normalized_onestep_regret"]
-            last_normalized_regrets = last_normalized_regrets - last_normalized_onestep_regret
 
             this_y[:, i] = last_y.detach().cpu().numpy()
             this_normalized_y[:, i] = last_normalized_y.detach().cpu().numpy()
@@ -224,9 +241,6 @@ def evaluate_decision_transformer_designer(problem, designer: DecisionTransforme
         id2y[id] = this_y
         id2normalized_y[id] = this_normalized_y
         id2normalized_onestep_regret[id] = this_normalized_onestep_regret
-
-        et = time.monotonic()
-        # print('eval time for dataset {}: {}'.format(id, et-st))
         
     metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, id2normalized_onestep_regret)
     
