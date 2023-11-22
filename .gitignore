@@ -7,6 +7,5 @@ plot/*
 !plot/*.py
 data
 wandb
-scripts/rollout_and_vis.py
 scripts/configs/rollout.py
 rollout*

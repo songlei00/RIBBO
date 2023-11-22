@@ -11,7 +11,6 @@ from algorithms.designers.bc_designer import BCTransformerDesigner, evaluate_bc_
 from algorithms.modules.bc import BCTransformer
 from problems.hpob_problem import HPOBMetaProblem
 from problems.synthetic import SyntheticMetaProblem
-from algorithms.utils import log_rollout
 
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:15]
@@ -118,7 +117,3 @@ for i_epoch in trange(1, args.num_epoch+1):
             path=os.path.join(logger.log_dir, "ckpt"),
         )
         
-# final rollout
-for mode, datasets in zip(['train', 'test'], [args.train_datasets, args.test_datasets]):
-    _, eval_records = evaluate_bc_transformer_designer(problem, designer, datasets, args.eval_episodes, args.deterministic_eval)
-    log_rollout(logger, 'rollout_{}'.format(mode), eval_records)

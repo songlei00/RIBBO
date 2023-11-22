@@ -14,7 +14,6 @@ from algorithms.designers.dt_designer import DecisionTransformerDesigner, evalua
 from algorithms.modules.dt import DecisionTransformer
 from problems.hpob_problem import HPOBMetaProblem
 from problems.synthetic import SyntheticMetaProblem
-from algorithms.utils import log_rollout
 
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:15]
@@ -120,9 +119,3 @@ for i_epoch in trange(1, args.num_epoch+1):
             path=os.path.join(logger.log_dir, "ckpt"),
         )
 
-# final rollout
-for mode, datasets in zip(["train", "test"], [args.train_datasets, args.test_datasets]):
-    for init_regret in args.init_regrets:
-        print(f"Evaluating final rollout on {mode} datasets {datasets} with regret {init_regret} ...")
-        _, eval_records = evaluate_decision_transformer_designer(problem, designer, datasets, args.eval_episodes, args.deterministic_eval, init_regret, args.regret_strategy)
-        log_rollout(logger, 'rollout_{}_regret={}'.format(mode, init_regret), eval_records)

@@ -36,39 +36,13 @@ def calculate_metrics(id2y, id2normalized_y, id2onestep_normalized_regret):
     metrics["best_normalized_y_agg"] = best_normalized_y_sum / len(id2normalized_y)
     metrics["normalized_regret_agg"] = normalized_regret_sum / len(id2onestep_normalized_regret)
 
-    # regret: (best_y - y), sum over sequence, average over eval num
-    # regret_sum, regret_normalized_sum = 0, 0
-    # for id in id2normalized_y:
-        # best_original_y_this = id2info[id]["y_max"] if id in global_info["train_datasets"] else global_info["y_max_mean"]
-        # regret_this = (best_original_y_this - id2y[id]).sum(axis=1).mean()
-        # regret_sum += regret_this
-        # metrics["regret_"+id] = regret_this
-
-        # best_y_this = 1.0
-        # regret_normalized_this = (best_y_this - id2normalized_y[id]).sum(axis=1).mean()
-        # regret_normalized_sum += regret_normalized_this
-        # metrics['regret_normalized_'+id] = regret_normalized_this
-    # metrics["regret_agg"] = regret_sum / len(id2y)
-    # metrics['regret_normalized_agg'] = regret_normalized_sum / len(id2normalized_y)
-
     trajectory_record = {}
 
     # mean y, mean normalized y
     for id in id2normalized_y:
-        mean_y = id2y[id].mean(axis=0)
-        mean_normalized_y = id2normalized_y[id].mean(axis=0)
-        trajectory_record['y_' + id] = mean_y
-        trajectory_record['normalized_y_'+id] = mean_normalized_y
+        trajectory_record[id] = {}
+        trajectory_record[id]['y'] = id2y[id].mean(axis=0).reshape(-1)
+        trajectory_record[id]['normalized_y'] = id2normalized_y[id].mean(axis=0).reshape(-1)
+        trajectory_record[id]['normalized_regret'] = id2onestep_normalized_regret[id].mean(axis=0).reshape(-1)
 
     return metrics, trajectory_record
-
-
-def log_rollout(logger, tag, trajectory_record):
-    for key in trajectory_record:
-        ys = [y.item() for y in trajectory_record[key]]
-        best_ys = [ys[0]]
-        for y in ys[1: ]:
-            best_ys.append(max(best_ys[-1], y))
-
-        for i in range(len(ys)):
-            logger.log_scalars(tag, {'best_'+key: best_ys[i], key: ys[i]}, i)
