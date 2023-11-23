@@ -51,7 +51,7 @@ class optformer_config(NameSpace):
     attention_dropout = 0.1
     residual_dropout = 0.1
     embed_dropout = 0.1
-    pos_encoding = "sinusoidal"
+    pos_encoding = "embed"
     mix_method = "concat"
 
     input_seq_len = 300

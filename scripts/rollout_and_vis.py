@@ -92,14 +92,14 @@ def plot(name2rollout, datasets, output_path):
     for idx, id in enumerate(datasets):
         axes[idx].set_title(str(id))
         for name in name2rollout:
-            axes[idx].plot(name2rollout[name][id]["y"].reshape(-1), label=name, alpha=0.6, linewidth=2)
+            axes[idx].plot(name2rollout[name][id]["y"].reshape(-1), label=name, alpha=0.6, linewidth=1.5)
         # axes[idx].legend()
     for name in name2rollout:
         axes[-2].set_title('agg')
         mean = np.mean(np.array([
             data["y"].reshape(-1) for data in name2rollout[name].values()
         ]), axis=0)
-        axes[-2].plot(mean, label=name, alpha=0.6, linewidth=2)
+        axes[-2].plot(mean, label=name, alpha=0.6, linewidth=1.5)
     for name in name2rollout:
         axes[-1].plot([], label=name)
     axes[-1].legend()
@@ -112,14 +112,14 @@ def plot(name2rollout, datasets, output_path):
     for idx, id in enumerate(datasets):
         axes[idx].set_title(str(id))
         for name in name2rollout:
-            axes[idx].plot(name2rollout[name][id]["normalized_y"].reshape(-1), label=name, alpha=0.6, linewidth=2)
+            axes[idx].plot(name2rollout[name][id]["normalized_y"].reshape(-1), label=name, alpha=0.6, linewidth=1.5)
         # axes[idx].legend()
     for name in name2rollout:
         axes[-2].set_title('agg')
         mean = np.mean(np.array([
             data["normalized_y"].reshape(-1) for data in name2rollout[name].values()
         ]), axis=0)
-        axes[-2].plot(mean, label=name, alpha=0.6, linewidth=2)
+        axes[-2].plot(mean, label=name, alpha=0.6, linewidth=1.5)
     for name in name2rollout:
         axes[-1].plot([], label=name)
     axes[-1].legend()
@@ -134,14 +134,14 @@ def plot(name2rollout, datasets, output_path):
         for name in name2rollout:
             data = name2rollout[name][id]["normalized_regret"].reshape(-1)
             data = np.flip(np.flip(data, 0).cumsum(), 0)
-            axes[idx].plot(data, label=name, alpha=0.6, linewidth=2)
+            axes[idx].plot(data, label=name, alpha=0.6, linewidth=1.5)
     for name in name2rollout:
         axes[-2].set_title('agg')
         data = np.mean(np.array([
             data["normalized_y"].reshape(-1) for data in name2rollout[name].values()
         ]), axis=0)
         data = np.flip(np.flip(data, 0).cumsum(), 0)
-        axes[-2].plot(data, label=name, alpha=0.6, linewidth=2)
+        axes[-2].plot(data, label=name, alpha=0.6, linewidth=1.5)
     for name in name2rollout:
         axes[-1].plot([], label=name)
     axes[-1].legend()
@@ -236,15 +236,19 @@ rollout_datasets = args.train_datasets
 # rollout_datasets = ["145833", "3891"]
 name2rollout = defaultdict(dict)
 for name, designer in ckpts.items():
-    if model_type == 'bc':
-        name2rollout[name] = rollout_designer(problem, designer, rollout_datasets, args.eval_episodes, False)
-    elif model_type == 'optformer':
-        algo = 'HillClimbing'
-        name2rollout[name] = rollout_designer(problem, designer, rollout_datasets, args.eval_episodes, False, algo=algo)
-    elif model_type == 'dt':
-        init_regret = 20
-        regret_strategy = "relabel"
-        name2rollout[name] = rollout_designer(problem, designer, rollout_datasets, args.eval_episodes, False, init_regret=init_regret, regret_strategy=regret_strategy)
+    algo = "HillClimbing"
+    init_regret = 0.0
+    regret_strategy = "relabel"
+    name2rollout[name] = rollout_designer(
+        problem=problem, 
+        designer=designer, 
+        datasets=rollout_datasets, 
+        eval_episode=args.eval_episodes, 
+        deterministic_eval=False, 
+        algo=algo, 
+        init_regret=init_regret, 
+        regret_strategy=regret_strategy
+    )
 name2rollout.update(add_behavior(behavior_cfgs, problem, rollout_datasets))
 
 if model_type == 'bc':
