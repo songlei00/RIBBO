@@ -138,7 +138,7 @@ def plot(name2rollout, datasets, output_path):
     for name in name2rollout:
         axes[-2].set_title('agg')
         data = np.mean(np.array([
-            data["normalized_y"].reshape(-1) for data in name2rollout[name].values()
+            data["normalized_regret"].reshape(-1) for data in name2rollout[name].values()
         ]), axis=0)
         data = np.flip(np.flip(data, 0).cumsum(), 0)
         axes[-2].plot(data, label=name, alpha=0.6, linewidth=1.5)
