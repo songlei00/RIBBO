@@ -9,7 +9,7 @@ n_cpu=`expr $max_cpu / $max_proc`
 echo 'num cpu per process: '$n_cpu
 
 min_seed=0
-max_seed=1
+max_seed=0
 fifo_name="/tmp/$$.fifo"
 mkfifo $fifo_name
 exec 7<>${fifo_name}

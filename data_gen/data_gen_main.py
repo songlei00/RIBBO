@@ -17,8 +17,6 @@ from vizier.benchmarks import experimenters
 from hill_climbing_designer import HillClimbingDesigner
 from regularized_evolution_designer import RegularizedEvolutionDesigner
 from hebo_designer import HeBODesigner
-from hpob_problem_statement import problem_statement as hpob_problem_statement
-from synthetic_problem_statement import problem_statement as synthetic_problem_statement
 from utils import seed_everything
 
 def designer_factory(name, problem, seed):
@@ -70,7 +68,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--problem', type=str, required=True, choices=['hpob', 'synthetic'])
+    parser.add_argument('--problem', type=str, required=True, choices=['hpob', 'synthetic', 'metabo_synthetic'])
     parser.add_argument('--designer', type=str, required=True)
     parser.add_argument('--search_space_id', type=str, required=True)
     parser.add_argument('--dataset_id', type=str, required=True)
@@ -83,13 +81,21 @@ if __name__ == '__main__':
         seed_everything(args.seed)
 
     if args.problem == 'hpob':
-        problem, f = hpob_problem_statement(
+        from hpob_problem_statement import problem_statement 
+        problem, f = problem_statement(
             args.search_space_id,
             args.dataset_id,
             './data/downloaded_data/hpob',
         )
     elif args.problem == 'synthetic':
-        problem, f = synthetic_problem_statement(
+        from synthetic_problem_statement import problem_statement
+        problem, f = problem_statement(
+            args.search_space_id,
+            args.dataset_id,
+        )
+    elif args.problem == 'metabo_synthetic':
+        from data_gen.metabo_synthetic_problem_statement import problem_statement
+        problem, f = problem_statement(
             args.search_space_id,
             args.dataset_id,
         )
