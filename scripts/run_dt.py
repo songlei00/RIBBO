@@ -14,6 +14,7 @@ from algorithms.designers.dt_designer import DecisionTransformerDesigner, evalua
 from algorithms.modules.dt import DecisionTransformer
 from problems.hpob_problem import HPOBMetaProblem
 from problems.synthetic import SyntheticMetaProblem
+from problems.metabo_synthetic import MetaBOSyntheticMetaProblem
 
 def post_init(args):
     args.train_datasets = args.train_datasets[args.id][:15]
@@ -21,7 +22,8 @@ def post_init(args):
     args.eval_episodes = 1 if args.deterministic_eval else args.eval_episodes
     args.problem_cls = {
         "hpob": HPOBMetaProblem, 
-        "synthetic": SyntheticMetaProblem
+        "synthetic": SyntheticMetaProblem,
+        "metabo_synthetic": MetaBOSyntheticMetaProblem,
     }.get(args.problem)
 
 args = parse_args(post_init=post_init)
