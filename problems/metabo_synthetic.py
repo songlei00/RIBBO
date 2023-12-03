@@ -259,7 +259,7 @@ class MetaBOSyntheticMetaProblem(MetaProblemBase):
         assert X.ndim == 2
         assert (X >= -1 - 1e-6).all() and (X <= 1 + 1e-6).all()
         X_np = X.cpu().detach().numpy()
-        Y_np = self.func(X_np)
+        Y_np = self.func(self.transform_x(X_np))
         normalized_y, normalized_regret = self.get_normalized_y_and_regret(Y_np)
         return torch.from_numpy(normalized_y).reshape(-1, 1), {
             'raw_y': torch.from_numpy(Y_np).reshape(-1, 1),
