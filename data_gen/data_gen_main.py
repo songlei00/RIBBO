@@ -17,6 +17,7 @@ from vizier.benchmarks import experimenters
 from hill_climbing_designer import HillClimbingDesigner
 from regularized_evolution_designer import RegularizedEvolutionDesigner
 from hebo_designer import HeBODesigner
+from botorch_designer import BotorchDesigner
 from utils import seed_everything
 
 def designer_factory(name, problem, seed):
@@ -56,6 +57,10 @@ def designer_factory(name, problem, seed):
         'CMAES': {
             'cls': designers.CMAESDesigner,
             'config': {'problem_statement': problem, 'seed': seed},
+        },
+        'BotorchBO': {
+            'cls': BotorchDesigner,
+            'config': {'problem_statement': problem},
         },
     }
     config = designer_config[name]

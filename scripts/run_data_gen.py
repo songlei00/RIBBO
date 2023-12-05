@@ -10,14 +10,12 @@ import numpy as np
 
 designers = [
     'Random',
-    # 'GridSearch',
     'ShuffledGridSearch',
     'RegularizedEvolution',
     'HillClimbing',
     'EagleStrategy',
-    # 'Vizier',
-    # 'HeBO',
     'CMAES',
+    'BotorchBO',
 ]
 
 
