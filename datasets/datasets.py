@@ -44,6 +44,18 @@ class TrajectoryDataset():
             assert isinstance(trajectory_list, list)
         self.trajectory_list = trajectory_list
         # self.trajectory_list = filter_designer(self.trajectory_list)
+        
+        designer_cnt = dict()
+        for t in self.trajectory_list:
+            designer = t.metadata['designer']
+            designer_cnt[designer] = designer_cnt.get(designer, 0) + 1
+
+        print('===== trajectory info =====')
+        print('total:', len(self.trajectory_list))
+        for k, v in designer_cnt.items():
+            print(k, v)
+        print('===========================')
+
         for t in self.trajectory_list:
             t.X = t.X[: max_input_seq_len]
             t.y = t.y[: max_input_seq_len]
@@ -70,7 +82,9 @@ class TrajectoryDataset():
             "HillClimbing": 3, 
             "HeBO": 4, 
             "EagleStrategy": 5, 
-            "CMAES": 6
+            "CMAES": 6,
+            "BotorchBO": 7,
+            "PyCMA": 8,
         }
         
         # calculate regrets
