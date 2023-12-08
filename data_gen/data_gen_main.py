@@ -16,7 +16,7 @@ from vizier.benchmarks import experimenters
 
 from hill_climbing_designer import HillClimbingDesigner
 from regularized_evolution_designer import RegularizedEvolutionDesigner
-from hebo_designer import HeBODesigner
+# from hebo_designer import HeBODesigner
 from botorch_designer import BotorchDesigner
 from utils import seed_everything
 
@@ -50,10 +50,10 @@ def designer_factory(name, problem, seed):
             'cls': designers.VizierGPBandit,
             'config': {'problem': problem},
         },
-        'HeBO': {
-            'cls': HeBODesigner,
-            'config': {'problem_statement': problem, 'rand_sample': 500, 'scramble_seed': seed},
-        },
+        # 'HeBO': {
+        #     'cls': HeBODesigner,
+        #     'config': {'problem_statement': problem, 'rand_sample': 500, 'scramble_seed': seed},
+        # },
         'CMAES': {
             'cls': designers.CMAESDesigner,
             'config': {'problem_statement': problem, 'seed': seed},
