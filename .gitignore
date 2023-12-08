@@ -7,3 +7,4 @@ plot/*
 !plot/*.py
 data
 wandb
+rollout_and_vis_gcx.py

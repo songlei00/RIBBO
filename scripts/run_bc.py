@@ -25,7 +25,7 @@ def post_init(args):
 
 args = parse_args(post_init=post_init)
 exp_name = "-".join([args.id, "seed"+str(args.seed)])
-logger = CompositeLogger(log_dir=f"./log/{args.name}", name=exp_name, logger_config={
+logger = CompositeLogger(log_dir=f"./log/{args.problem}/{args.name}", name=exp_name, logger_config={
     "TensorboardLogger": {}, 
     "WandbLogger": {"config": args, "settings": wandb.Settings(_disable_stats=True), **args.wandb}
 }, activate=not args.debug)

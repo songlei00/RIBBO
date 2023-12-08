@@ -24,15 +24,17 @@ from UtilsRL.exp import parse_args, setup
 
 #%%    
 
-def rollout_designer(problem, designer, datasets, eval_episode, deterministic_eval, **kwargs):
-    dataset = problem.get_dataset()
+def average(arr):
+    return sum(arr) / len(arr)
+
+def rollout_designer(problem, designer, datasets, eval_episode, eval_mode, **kwargs):
     if isinstance(designer, BCTransformerDesigner):
         metrics, record = evaluate_bc_transformer_designer(
             problem=problem, 
             designer=designer, 
             datasets=datasets, 
             eval_episode=eval_episode, 
-            deterministic_eval=deterministic_eval, 
+            eval_mode=eval_mode, 
         )
     elif isinstance(designer, OptFormerDesigner):
         metrics, record = evaluate_optformer_designer(
@@ -40,7 +42,7 @@ def rollout_designer(problem, designer, datasets, eval_episode, deterministic_ev
             designer=designer, 
             datasets=datasets, 
             eval_episode=eval_episode, 
-            deterministic_eval=deterministic_eval, 
+            eval_mode=eval_mode, 
             algo=kwargs.get("algo")
         )
     elif isinstance(designer, DecisionTransformerDesigner):
@@ -49,7 +51,7 @@ def rollout_designer(problem, designer, datasets, eval_episode, deterministic_ev
             designer=designer, 
             datasets=datasets, 
             eval_episode=eval_episode, 
-            deterministic_eval=deterministic_eval, 
+            eval_mode=eval_mode, 
             init_regret=kwargs.get("init_regret"), 
             regret_strategy=kwargs.get("regret_strategy")
         )
@@ -73,86 +75,144 @@ def add_behavior(behavior_cfgs, problem, datasets):
         name2rollout[a] = {}
         for t in tasks:
             name2rollout[a][t] = {}
-            y = sum(behavior_rollout[a][t][:num])/num
+            y = behavior_rollout[a][t][:num*5]
+            y = torch.stack(y, dim=0)
+            y = y.reshape([5, num, -1]).mean(dim=1)
             normalized_y, normalized_regret = problem.get_normalized_y_and_regret(y, id=t)
             name2rollout[a][t]["y"] = y.numpy()
             name2rollout[a][t]["normalized_y"] = normalized_y.numpy()
             name2rollout[a][t]["normalized_regret"] = normalized_regret.numpy()
-
+    del behavior_rollout
     return name2rollout          
 
-def plot(name2rollout, datasets, output_path):
+def plot(name2rollout, datasets, output_path, palette=None):
+    if palette is None:
+        palette = ["red", "orange", "mediumseagreen", "royalblue", "darkviolet", "slategray", "violet"]
+        palette.reverse()
+        palette = {
+            n: palette[i] for i, n in enumerate(name2rollout.keys())
+        }
+    print(f"Saving to {output_path}")
     os.makedirs(output_path, exist_ok=True)
     total_num = len(datasets) + 2
     nrows, ncols = 1+(total_num-1)//4, 4
-
+    
+    # concatenate the seeds
+    for name in name2rollout:
+        if isinstance(name2rollout[name], list):
+            id2data = copy.deepcopy(name2rollout[name][0])
+            for id in id2data:
+                for entry in id2data[id]:
+                    id2data[id][entry] = np.stack([name2rollout[name][ii][id][entry] for ii in range(len(name2rollout[name]))], axis=0)
+            name2rollout[name] = id2data
+        else:
+            for id in name2rollout[name]:
+                for entry in name2rollout[name][id]:
+                    if len(name2rollout[name][id][entry].shape) == 1:
+                        name2rollout[name][id][entry] = name2rollout[name][id][entry][None, ...]
+    for name in name2rollout:
+        for id in datasets:
+            data = name2rollout[name][id]["normalized_regret"]
+            name2rollout[name][id]["normalized_cumulative_regret"] = np.flip(np.flip(data, 1).cumsum(axis=1), 1)
+            
     # 1. plot y
     _, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6 * ncols, 4.5 * nrows))
     axes = axes.reshape(-1)
     for idx, id in enumerate(datasets):
         axes[idx].set_title(str(id))
         for name in name2rollout:
-            axes[idx].plot(name2rollout[name][id]["y"].reshape(-1), label=name, alpha=0.6, linewidth=1.5)
-        # axes[idx].legend()
+            mean = name2rollout[name][id]["y"].mean(0)
+            std = name2rollout[name][id]["y"].std(0)
+            step_metric = np.arange(len(mean))
+            axes[idx].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
+            axes[idx].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
     for name in name2rollout:
         axes[-2].set_title('agg')
-        mean = np.mean(np.array([
-            data["y"].reshape(-1) for data in name2rollout[name].values()
-        ]), axis=0)
-        axes[-2].plot(mean, label=name, alpha=0.6, linewidth=1.5)
+        mean = np.stack([v["y"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
+        std = np.stack([v["y"].std(0) for v in name2rollout[name].values()], axis=0).mean(0)
+        step_metric = np.arange(len(mean))
+        axes[-2].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
+        axes[-2].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
     for name in name2rollout:
-        axes[-1].plot([], label=name)
+        axes[-1].plot([], label=name, color=palette[name])
     axes[-1].legend()
     plt.savefig(os.path.join(output_path, "y.png"))
     plt.clf()
     
     # 2. plot normalized y
-    _, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4 * ncols, 3 * nrows))
-    axes = axes.reshape(-1)   
+    _, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6 * ncols, 4.5 * nrows))
+    axes = axes.reshape(-1)
     for idx, id in enumerate(datasets):
         axes[idx].set_title(str(id))
         for name in name2rollout:
-            axes[idx].plot(name2rollout[name][id]["normalized_y"].reshape(-1), label=name, alpha=0.6, linewidth=1.5)
-        # axes[idx].legend()
+            mean = name2rollout[name][id]["normalized_y"].mean(0)
+            std = name2rollout[name][id]["normalized_y"].std(0)
+            step_metric = np.arange(len(mean))
+            axes[idx].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
+            axes[idx].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
     for name in name2rollout:
         axes[-2].set_title('agg')
-        mean = np.mean(np.array([
-            data["normalized_y"].reshape(-1) for data in name2rollout[name].values()
-        ]), axis=0)
-        axes[-2].plot(mean, label=name, alpha=0.6, linewidth=1.5)
+        mean = np.stack([v["normalized_y"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
+        std = np.stack([v["normalized_y"].std(0) for v in name2rollout[name].values()], axis=0).mean(0)
+        step_metric = np.arange(len(mean))
+        axes[-2].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
+        axes[-2].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
     for name in name2rollout:
-        axes[-1].plot([], label=name)
+        axes[-1].plot([], label=name, color=palette[name])
     axes[-1].legend()
-    plt.savefig(os.path.join(output_path, "y_normalized.png"))
+    plt.savefig(os.path.join(output_path, "normalized_y.png"))
     plt.clf()
     
     # 3. plot regret
-    _, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4 * ncols, 3 * nrows))
-    axes = axes.reshape(-1)   
+    _, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6 * ncols, 4.5 * nrows))
+    axes = axes.reshape(-1)
     for idx, id in enumerate(datasets):
         axes[idx].set_title(str(id))
         for name in name2rollout:
-            data = name2rollout[name][id]["normalized_regret"].reshape(-1)
-            data = np.flip(np.flip(data, 0).cumsum(), 0)
-            axes[idx].plot(data, label=name, alpha=0.6, linewidth=1.5)
+            mean = name2rollout[name][id]["normalized_cumulative_regret"].mean(0)
+            std = name2rollout[name][id]["normalized_cumulative_regret"].std(0)
+            step_metric = np.arange(len(mean))
+            axes[idx].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
+            axes[idx].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
     for name in name2rollout:
         axes[-2].set_title('agg')
-        data = np.mean(np.array([
-            data["normalized_regret"].reshape(-1) for data in name2rollout[name].values()
-        ]), axis=0)
-        data = np.flip(np.flip(data, 0).cumsum(), 0)
-        axes[-2].plot(data, label=name, alpha=0.6, linewidth=1.5)
+        mean = np.stack([v["normalized_cumulative_regret"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
+        std = np.stack([v["normalized_cumulative_regret"].std(0) for v in name2rollout[name].values()], axis=0).mean(0)
+        step_metric = np.arange(len(mean))
+        axes[-2].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
+        axes[-2].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
     for name in name2rollout:
-        axes[-1].plot([], label=name)
+        axes[-1].plot([], label=name, color=palette[name])
     axes[-1].legend()
     plt.savefig(os.path.join(output_path, "regret.png"))
+    plt.clf()
+    
+    # 4. plot the aggregations
+    _, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 4.5))
+    axes = axes.reshape(-1)
+    axes[0].set_title("Normalized Y")
+    for name in name2rollout:
+        mean = np.stack([v["normalized_y"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
+        std = np.stack([v["normalized_y"].std(0) for v in name2rollout[name].values()], axis=0).mean(0)
+        step_metric = np.arange(len(mean))
+        axes[0].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
+        axes[0].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
+    axes[1].set_title("Normalized Regret")
+    for name in name2rollout:
+        mean = np.stack([v["normalized_cumulative_regret"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
+        std = np.stack([v["normalized_cumulative_regret"].std(0) for v in name2rollout[name].values()], axis=0).mean(0)
+        step_metric = np.arange(len(mean))
+        axes[1].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
+        axes[1].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
+    axes[1].legend()
+    plt.savefig(os.path.join(output_path, "agg.png"))
     plt.clf()
 
     
 #%% 
 
 def post_init(args):
-    args.train_datasets = args.train_datasets[args.id][:15]
+    args.train_datasets = args.train_datasets[args.id][:30]
     args.test_datasets = args.test_datasets[args.id][:15]
     args.eval_episodes = 20
     args.deterministic_eval = False
@@ -187,46 +247,63 @@ def load_model(ckpt_cfgs):
             new_args = copy.deepcopy(args.bc_config)
             for k in config["args"]:
                 new_args[k] = config["args"][k]
-            transformer = BCTransformer(problem.x_dim, problem.y_dim, new_args.embed_dim, new_args.num_layers, problem.seq_len, new_args.num_heads, True, new_args.mix_method, new_args.attention_dropout, new_args.residual_dropout, new_args.embed_dropout, new_args.pos_encoding)
-            designer = BCTransformerDesigner(transformer, problem.x_dim, problem.y_dim, new_args.embed_dim, problem.seq_len, new_args.input_seq_len, new_args.x_type, new_args.y_loss_coeff, new_args.use_abs_timestep, "cpu")
+            designers = []
+            for p in config["path"]:
+                transformer = BCTransformer(problem.x_dim, problem.y_dim, new_args.embed_dim, new_args.num_layers, problem.seq_len, new_args.num_heads, True, new_args.mix_method, new_args.attention_dropout, new_args.residual_dropout, new_args.embed_dropout, new_args.pos_encoding)
+                designer = BCTransformerDesigner(transformer, problem.x_dim, problem.y_dim, new_args.embed_dim, problem.seq_len, new_args.input_seq_len, new_args.x_type, new_args.y_loss_coeff, new_args.use_abs_timestep, "cpu")
+                designer.load_state_dict(torch.load(p, map_location="cpu"), strict=True)
+                designer.to(args.device)
+                designers.append(designer)
         elif config["type"] == "dt":
             new_args = copy.deepcopy(args.dt_config)
             for k in config["args"]:
                 new_args[k] = config["args"][k]
-            transformer = DecisionTransformer(problem.x_dim, problem.y_dim, new_args.embed_dim, new_args.num_layers, problem.seq_len, new_args.num_heads, True, new_args.mix_method, new_args.attention_dropout, new_args.residual_dropout, new_args.embed_dropout, new_args.pos_encoding)
-            designer = DecisionTransformerDesigner(transformer, problem.x_dim, problem.y_dim, new_args.embed_dim, problem.seq_len, new_args.input_seq_len, new_args.x_type, new_args.y_loss_coeff, new_args.use_abs_timestep, "cpu")
+            designers = []
+            for p in config["path"]:
+                transformer = DecisionTransformer(problem.x_dim, problem.y_dim, new_args.embed_dim, new_args.num_layers, problem.seq_len, new_args.num_heads, True, new_args.mix_method, new_args.attention_dropout, new_args.residual_dropout, new_args.embed_dropout, new_args.pos_encoding)
+                designer = DecisionTransformerDesigner(transformer, problem.x_dim, problem.y_dim, new_args.embed_dim, problem.seq_len, new_args.input_seq_len, new_args.x_type, new_args.y_loss_coeff, new_args.use_abs_timestep, "cpu")
+                designer.load_state_dict(torch.load(p, map_location="cpu"), strict=True)
+                designer.to(args.device)
+                designers.append(designer)
         elif config["type"] == "optformer":
             new_args = copy.deepcopy(args.optformer_config)
             for k in config["args"]:
                 new_args[k] = config["args"][k]
-            transformer = OptFormerTransformer(problem.x_dim, problem.y_dim, new_args.embed_dim, new_args.num_layers, problem.seq_len, new_args.num_heads, new_args.algo_num, new_args.mix_method, new_args.attention_dropout, new_args.residual_dropout, new_args.embed_dropout, new_args.pos_encoding)
-            designer =OptFormerDesigner(transformer, problem.x_dim, problem.y_dim, new_args.embed_dim, problem.seq_len, new_args.input_seq_len, new_args.x_type, new_args.y_loss_coeff, new_args.use_abs_timestep, "cpu")
-        designer.load_state_dict(torch.load(config["path"], map_location="cpu"), strict=True)
-        designer.to(args.device)
-        ckpts[name] = designer
+            designers = []
+            for p in config["path"]:
+                transformer = OptFormerTransformer(problem.x_dim, problem.y_dim, new_args.embed_dim, new_args.num_layers, problem.seq_len, new_args.num_heads, new_args.algo_num, new_args.mix_method, new_args.attention_dropout, new_args.residual_dropout, new_args.embed_dropout, new_args.pos_encoding)
+                designer = OptFormerDesigner(transformer, problem.x_dim, problem.y_dim, new_args.embed_dim, problem.seq_len, new_args.input_seq_len, new_args.x_type, new_args.y_loss_coeff, new_args.use_abs_timestep, "cpu")
+                designer.load_state_dict(torch.load(p, map_location="cpu"), strict=True)
+                designer.to(args.device)
+                designers.append(designer)
+        ckpts[name] = designers
     return ckpts
+
     
-
-dir_name = 'dt-embed128-layer12-embed-len50-maxlen100'
-wandb_name = '7609-seed0-11-21-15-58-2592675'
-model_type = 'dt'
-
-ckpt_dir = 'log/{}/{}/ckpt/'.format(dir_name, wandb_name)
-ckpt_cfgs = dict()
-for epoch in range(1000, 4001, 1000):
-    ckpt_cfgs['default-step{}'.format(epoch)] = {
-        'path': ckpt_dir + '{}.ckpt'.format(epoch),
-        'args': {'input_seq_len': 50},
-        'type': model_type,
+ckpt_cfgs = {
+    "DT": {
+        "path": [f"log/hpob/dt-max150-input50/5527-seed0-12-04-11-01-850930/ckpt/{e}.ckpt" for e in [1000, 2000, 3000]], 
+        "args": {"input_seq_len": 50, }, 
+        "rollout_args": {"eval_mode": "dynamic", "regret_strategy": "relabel", "init_regret": 20.0}, 
+        "type": "dt"
+    }, 
+    "DT-layer8": {
+        "path": [f"log/hpob/dt-max150-input50-layer8/5527-seed0-12-04-17-42-1353752/ckpt/{e}.ckpt" for e in [1000, 2000, 3000]], 
+        "args": {"input_seq_len": 50, "num_layers": 8}, 
+        "rollout_args": {"eval_mode": "dynamic", "regret_strategy": "relabel", "init_regret": 20.0}, 
+        "type": "dt"
     }
+}
+
+    
 behavior_cfgs = {
     "add_behavior": True, 
-    "num": 20, 
+    "num": 10, 
     "CMAES": True, 
     "EagleStrategy": True, 
     "HeBO": False, 
     "HillClimbing": True, 
-    "Random": True, 
+    "Random": False, 
     "RegularizedEvolution": True, 
     "ShuffledGridSearch": False
 }
@@ -235,25 +312,21 @@ ckpts = load_model(ckpt_cfgs)
 rollout_datasets = args.train_datasets
 # rollout_datasets = ["145833", "3891"]
 name2rollout = defaultdict(dict)
-for name, designer in ckpts.items():
-    algo = "HillClimbing"
-    init_regret = 0.0
-    regret_strategy = "relabel"
-    name2rollout[name] = rollout_designer(
-        problem=problem, 
-        designer=designer, 
-        datasets=rollout_datasets, 
-        eval_episode=args.eval_episodes, 
-        deterministic_eval=False, 
-        algo=algo, 
-        init_regret=init_regret, 
-        regret_strategy=regret_strategy
-    )
 name2rollout.update(add_behavior(behavior_cfgs, problem, rollout_datasets))
+for name in ckpt_cfgs:
+    rollout_args = ckpt_cfgs[name]["rollout_args"]
+    rollout_res = []
+    for designer in ckpts[name]:
+        rollout_res.append(
+            rollout_designer(problem, designer, rollout_datasets, args.eval_episodes, **rollout_args)
+        )
+    name2rollout[name] = rollout_res
 
-if model_type == 'bc':
-    plot(name2rollout, rollout_datasets, output_path=f"./plot/rollout/{args.id}/{dir_name}")
-elif model_type == 'optformer':
-    plot(name2rollout, rollout_datasets, output_path=f"./plot/rollout/{args.id}/{dir_name}-{algo}")
-elif model_type == 'dt':
-    plot(name2rollout, rollout_datasets, output_path=f"./plot/rollout/{args.id}/{dir_name}-{init_regret}-clip")
+
+# if model_type == 'bc':
+    # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}")
+# elif model_type == 'optformer':
+    # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}-{algo}")
+# elif model_type == 'dt':
+    # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}-{init_regret}-{regret_strategy}-dyna")
+plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/all/")

@@ -5,7 +5,7 @@ seed = 0
 debug = False
 name = "dt"
 
-id = "6767"
+id = "Rastrigin"
 
 x_type = "stochastic"
 y_loss_coeff = 0.0

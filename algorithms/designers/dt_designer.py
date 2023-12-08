@@ -135,7 +135,7 @@ class DecisionTransformerDesigner(BaseDesigner):
         x_pred, *_ = self.transformer(
             x=self.past_x[:, :self.step_count+1][:, -self.input_seq_len:], 
             y=self.past_y[:, :self.step_count+1][:, -self.input_seq_len:], 
-            regrets_to_go=self.past_regrets[:, :self.step_count+1][:, -self.input_seq_len:] if self.use_abs_timestep else None, 
+            regrets_to_go=self.past_regrets[:, :self.step_count+1][:, -self.input_seq_len:], 
             timesteps=self.timesteps[:, :self.step_count+1][:, -self.input_seq_len:] if self.use_abs_timestep else None, 
             attention_mask=None, 
             key_padding_mask=None # during testing all positions are valid
@@ -208,13 +208,17 @@ def evaluate_decision_transformer_designer(
     designer: DecisionTransformerDesigner, 
     datasets, 
     eval_episode, 
-    deterministic_eval, 
+    eval_mode, 
     init_regret, 
     regret_strategy
 ):
     print(f"evaluating on {datasets} ...")
     designer.eval()
     id2y, id2normalized_y, id2normalized_onestep_regret = {}, {}, {}
+    if eval_mode == "deterministic":
+        deterministic = True
+    else:
+        deterministic = False
 
     for id in datasets:
         problem.reset_task(id)
@@ -223,12 +227,16 @@ def evaluate_decision_transformer_designer(
         this_y = np.zeros([eval_episode, problem.seq_len, 1])
         this_normalized_y = np.zeros([eval_episode, problem.seq_len, 1])
         this_normalized_onestep_regret = np.zeros([eval_episode, problem.seq_len, 1])
+        if eval_mode == "dynamic":
+            raw_logstd_max = designer.x_head.logstd_max.data.clone()
         for i in range(problem.seq_len):
+            if eval_mode == "dynamic":
+                designer.x_head.logstd_max.data = designer.x_head.logstd_max.data - (7 / problem.seq_len)
             last_x = designer.suggest(
                 last_x=last_x, 
                 last_y=last_normalized_y, 
                 last_onestep_regret=last_normalized_onestep_regret, 
-                deterministic=deterministic_eval, 
+                deterministic=deterministic, 
                 regret_strategy=regret_strategy, 
             )
             last_normalized_y, info = problem.forward(last_x)
@@ -238,6 +246,8 @@ def evaluate_decision_transformer_designer(
             this_y[:, i] = last_y.detach().cpu().numpy()
             this_normalized_y[:, i] = last_normalized_y.detach().cpu().numpy()
             this_normalized_onestep_regret[:, i] = last_normalized_onestep_regret.detach().cpu().numpy()
+        if eval_mode == "dynamic":
+            designer.x_head.logstd_max.data = raw_logstd_max
         id2y[id] = this_y
         id2normalized_y[id] = this_normalized_y
         id2normalized_onestep_regret[id] = this_normalized_onestep_regret
