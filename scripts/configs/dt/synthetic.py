@@ -42,7 +42,7 @@ deterministic_eval = False
 init_regrets = [0, 20, 50] 
 regret_strategy = "none"
 
-root_dir = "./data/downloaded_data/synthetic/"
+root_dir = None
 data_dir = './data/generated_data/synthetic'
 cache_dir = "./cache/synthetic/"
 

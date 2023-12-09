@@ -16,20 +16,22 @@ parser.add_argument('--mode', type=str, default='train', choices=['train', 'test
 args = parser.parse_args()
 
 mode = args.mode
+
+if args.mode == 'train':
+    s, e = 0, 50
+elif args.mode == 'validation':
+    s, e = 50, 60
+else: # test
+    s, e = 60, 70
+
 if args.problem == 'hpob':
     with open('./others/hpob-summary-stats/{}-summary-stats.json'.format(mode), 'r') as f:
         summary_stats = json.load(f)
 elif args.problem == 'synthetic':
     from problems.synthetic import bbob_func_names
-    summary_stats = {name: [str(i) for i in range(50)] for name in bbob_func_names}
+    summary_stats = {name: [str(i) for i in range(s, e)] for name in bbob_func_names}
 elif args.problem == 'metabo_synthetic':
     names = ('Branin2', 'Hartmann3')
-    if args.mode == 'train':
-        s, e = 0, 50
-    elif args.mode == 'validation':
-        s, e = 50, 60
-    else: # test
-        s, e = 60, 70
     summary_stats = {name: [str(i) for i in range(s, e)] for name in names}
 else:
     raise NotImplementedError
