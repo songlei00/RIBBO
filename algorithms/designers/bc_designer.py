@@ -196,11 +196,16 @@ def evaluate_bc_transformer_designer(
     designer: BCTransformerDesigner, 
     datasets, 
     eval_episode, 
-    deterministic_eval
+    eval_mode,
 ):
     print(f"evaluating on {datasets} ...")
     designer.eval()
     id2y, id2normalized_y, id2normalized_onestep_regret = {}, {}, {}
+    if eval_mode == "deterministic":
+        deterministic = True
+    else:
+        deterministic = False
+
     for id in datasets:
         problem.reset_task(id)
         designer.reset(eval_episode)
@@ -208,11 +213,15 @@ def evaluate_bc_transformer_designer(
         this_y = np.zeros([eval_episode, problem.seq_len, 1])
         this_normalized_y = np.zeros([eval_episode, problem.seq_len, 1])
         this_normalized_onestep_regret = np.zeros([eval_episode, problem.seq_len, 1])
+        if eval_mode == "dynamic":
+            raw_logstd_max = designer.x_head.logstd_max.data.clone()
         for i in range(problem.seq_len):
+            if eval_mode == "dynamic":
+                designer.x_head.logstd_max.data = designer.x_head.logstd_max.data - (7 / problem.seq_len)
             last_x = designer.suggest(
                 last_x=last_x, 
                 last_y=last_normalized_y, 
-                deterministic=deterministic_eval
+                deterministic=deterministic,
             )
             last_normalized_y, info = problem.forward(last_x)
             last_y = info["raw_y"]
@@ -221,7 +230,8 @@ def evaluate_bc_transformer_designer(
             this_y[:, i] = last_y.detach().cpu().numpy()
             this_normalized_y[:, i] = last_normalized_y.detach().cpu().numpy()
             this_normalized_onestep_regret[:, i] = last_normalized_onestep_regret.detach().cpu().numpy()
-            
+        if eval_mode == "dynamic":
+            designer.x_head.logstd_max.data = raw_logstd_max
         id2y[id] = this_y
         id2normalized_y[id] = this_normalized_y
         id2normalized_onestep_regret[id] = this_normalized_onestep_regret
