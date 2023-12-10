@@ -19,6 +19,7 @@ from algorithms.modules.optformer import OptFormerTransformer
 from algorithms.modules.dt import DecisionTransformer
 from problems.hpob_problem import HPOBMetaProblem
 from problems.synthetic import SyntheticMetaProblem
+from problems.metabo_synthetic import MetaBOSyntheticMetaProblem
 
 from UtilsRL.exp import parse_args, setup
 
@@ -75,9 +76,9 @@ def add_behavior(behavior_cfgs, problem, datasets):
         name2rollout[a] = {}
         for t in tasks:
             name2rollout[a][t] = {}
-            y = behavior_rollout[a][t][:num*5]
+            y = behavior_rollout[a][t][:num]
             y = torch.stack(y, dim=0)
-            y = y.reshape([5, num, -1]).mean(dim=1)
+            # y = y.reshape([5, num, -1]).mean(dim=1) # TODO: align testing
             normalized_y, normalized_regret = problem.get_normalized_y_and_regret(y, id=t)
             name2rollout[a][t]["y"] = y.numpy()
             name2rollout[a][t]["normalized_y"] = normalized_y.numpy()
@@ -87,8 +88,12 @@ def add_behavior(behavior_cfgs, problem, datasets):
 
 def plot(name2rollout, datasets, output_path, palette=None):
     if palette is None:
-        palette = ["red", "orange", "mediumseagreen", "royalblue", "darkviolet", "slategray", "violet"]
-        palette.reverse()
+        palette = [
+            'violet', 'slategray', 'darkviolet', 'royalblue', 'mediumseagreen', 'orange', 'red',
+            'blue', 'green', 'cyan', 'magenta', 'yellow', 'black', 'purple', 'pink', 'brown', 
+            'teal',  'lightblue', 'lime', 'lavender', 'turquoise', 'darkgreen', 'tan', 'salmon', 
+            'gold',  'darkred', 'darkblue',
+        ]
         palette = {
             n: palette[i] for i, n in enumerate(name2rollout.keys())
         }
@@ -218,31 +223,47 @@ def post_init(args):
     args.deterministic_eval = False
     args.problem_cls = {
         "hpob": HPOBMetaProblem, 
-        "synthetic": SyntheticMetaProblem
+        "synthetic": SyntheticMetaProblem,
+        "metabo_synthetic": MetaBOSyntheticMetaProblem,
     }.get(args.problem)
     
 args = parse_args("scripts/configs/rollout/hpob.py", post_init=post_init)
-# args = parse_args("scripts/configs/rollout/synthetic.py")
+# args = parse_args("scripts/configs/rollout/synthetic.py", post_init=post_init)
+# args = parse_args("scripts/configs/rollout/metabo_synthetic.py", post_init=post_init)
 setup(args, _seed=0)
 
 # define the problem and the dataset
-problem = args.problem_cls(
-    search_space_id=args.id, 
-    root_dir=args.root_dir, 
-    data_dir=args.data_dir,
-    cache_dir=args.cache_dir, 
-    input_seq_len=1, # does not matter here
-    max_input_seq_len=args.max_input_seq_len,
-    normalize_method='random', # does not matter here 
-    scale_clip_range=None, # does not matter here
-    prioritize=False, # does not matter here
-)
+problem_dict = dict()
+# for mode in ('train', 'test', 'validation'):
+for mode in ('train', 'test'):
+    if mode == 'train':
+        data_dir = args.data_dir
+        cache_dir = args.cache_dir
+    else:
+        data_dir = args.data_dir.rstrip('/') + '_' + mode + '/'
+        cache_dir = args.cache_dir.rstrip('/') + '_' + mode + '/'
+
+    if os.path.exists(cache_dir + args.id):
+        print(f'Load {mode} data')
+        problem = args.problem_cls(
+            search_space_id=args.id, 
+            root_dir=args.root_dir, 
+            data_dir=data_dir,
+            cache_dir=cache_dir, 
+            input_seq_len=1, # does not matter here
+            max_input_seq_len=args.max_input_seq_len,
+            normalize_method='random', # does not matter here 
+            scale_clip_range=None, # does not matter here
+            prioritize=False, # does not matter here
+        )
+        problem_dict[mode] = problem
 
 
 #%%
-def load_model(ckpt_cfgs):
+def load_model(problem, ckpt_cfgs):
     ckpts = {}
     for name, config in ckpt_cfgs.items():
+        print(f'Load from {config["path"]}')
         if config["type"] == "bc":
             new_args = copy.deepcopy(args.bc_config)
             for k in config["args"]:
@@ -295,10 +316,21 @@ ckpt_cfgs = {
     }
 }
 
-    
+# ckpt_cfgs = dict()
+# for epoch in range(1000, 5001, 1000):
+#     path = 'dt-default/SharpRidge-seed0-12-03-19-12-3383349'
+#     ckpt_cfgs['DT_' + str(epoch)] = {
+#         'path': [
+#             f'log/{path}/ckpt/{epoch}.ckpt',
+#         ],
+#         "args": {"input_seq_len": 50, }, 
+#         "rollout_args": {"eval_mode": "dynamic", "regret_strategy": "relabel", "init_regret": 0.0}, 
+#         "type": "dt"
+#     } 
+
 behavior_cfgs = {
     "add_behavior": True, 
-    "num": 10, 
+    "num": 5, 
     "CMAES": True, 
     "EagleStrategy": True, 
     "HeBO": False, 
@@ -308,25 +340,30 @@ behavior_cfgs = {
     "ShuffledGridSearch": False
 }
 
-ckpts = load_model(ckpt_cfgs)
-rollout_datasets = args.train_datasets
-# rollout_datasets = ["145833", "3891"]
-name2rollout = defaultdict(dict)
-name2rollout.update(add_behavior(behavior_cfgs, problem, rollout_datasets))
-for name in ckpt_cfgs:
-    rollout_args = ckpt_cfgs[name]["rollout_args"]
-    rollout_res = []
-    for designer in ckpts[name]:
-        rollout_res.append(
-            rollout_designer(problem, designer, rollout_datasets, args.eval_episodes, **rollout_args)
-        )
-    name2rollout[name] = rollout_res
+for mode, problem in problem_dict.items():
+    ckpts = load_model(problem, ckpt_cfgs)
+    if mode == 'train':
+        rollout_datasets = args.train_datasets
+    elif mode == 'validation':
+        rollout_datasets = args.validation_datasets
+    else: # test
+        rollout_datasets = args.test_datasets
+    # rollout_datasets = ["145833", "3891"]
+    name2rollout = defaultdict(dict)
+    name2rollout.update(add_behavior(behavior_cfgs, problem, rollout_datasets))
+    for name in ckpt_cfgs:
+        rollout_args = ckpt_cfgs[name]["rollout_args"]
+        rollout_res = []
+        for designer in ckpts[name]:
+            rollout_res.append(
+                rollout_designer(problem, designer, rollout_datasets, args.eval_episodes, **rollout_args)
+            )
+        name2rollout[name] = rollout_res
 
-
-# if model_type == 'bc':
-    # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}")
-# elif model_type == 'optformer':
-    # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}-{algo}")
-# elif model_type == 'dt':
-    # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}-{init_regret}-{regret_strategy}-dyna")
-plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/all/")
+    # if model_type == 'bc':
+        # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}")
+    # elif model_type == 'optformer':
+        # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}-{algo}")
+    # elif model_type == 'dt':
+        # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}-{init_regret}-{regret_strategy}-dyna")
+    plot(name2rollout, rollout_datasets, output_path=f"./plot/rollout/{args.problem}/{args.id}/{mode}/")
