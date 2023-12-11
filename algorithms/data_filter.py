@@ -11,7 +11,7 @@ def filter_designer(trajectory_list):
         'HillClimbing',
         'EagleStrategy',
         'CMAES',
-        'Botorch',
+        'BotorchBO',
     ]
     def filter_fn(trajectory):
         metadata = trajectory.metadata

@@ -16,7 +16,7 @@ designers = [
     'HillClimbing',
     'EagleStrategy',
     'CMAES',
-    'Botorch',
+    'BotorchBO',
 ]
 
 
