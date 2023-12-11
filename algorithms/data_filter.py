@@ -6,14 +6,12 @@ import torch
 def filter_designer(trajectory_list):
     designers = [
         # 'Random',
-        # 'GridSearch',
         # 'ShuffledGridSearch',
         'RegularizedEvolution',
         'HillClimbing',
         'EagleStrategy',
-        # 'Vizier',
-        # 'HeBO',
         'CMAES',
+        'Botorch',
     ]
     def filter_fn(trajectory):
         metadata = trajectory.metadata

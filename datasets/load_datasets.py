@@ -11,14 +11,12 @@ logger = logging.getLogger(__name__)
 
 designers = [
     'Random',
-    # 'GridSearch',
     'ShuffledGridSearch',
     'RegularizedEvolution',
     'HillClimbing',
     'EagleStrategy',
-    # 'Vizier',
-    'HeBO',
     'CMAES',
+    'Botorch',
 ]
 
 
@@ -70,7 +68,7 @@ def load_dataset(base_dir, filter_fn, split_fn):
     return sk2t
 
 
-def load_hpob_dataset(data_dir, search_space_id):
+def load_trajectory_dataset(data_dir, search_space_id):
     def filter_fn(file_path):
         file_name = file_path.split(os.sep)[-1].rstrip('.json')
         curr_designer, curr_search_space_id, _, _ = file_name.split('_')

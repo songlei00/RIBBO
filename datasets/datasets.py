@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, IterableDataset
 
 from datasets.trajectory import Trajectory
 from datasets.metrics import metric_regret
-from datasets.load_datasets import load_hpob_dataset
+from datasets.load_datasets import load_trajectory_dataset
 from algorithms.data_filter import (
     filter_designer, 
     filter_dataset, 
@@ -94,7 +94,7 @@ class TrajectoryDataset():
         self.scale_clip_range = scale_clip_range
 
     def create_cache(self, search_space_id, data_dir, cache_dir, block_size=50):
-        trajectory_list = load_hpob_dataset(data_dir, search_space_id)
+        trajectory_list = load_trajectory_dataset(data_dir, search_space_id)
 
         k2t = dict()
         for t in trajectory_list:

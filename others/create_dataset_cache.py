@@ -58,3 +58,9 @@ for search_space_id in summary_stats:
     print('length:', len(dataset))
     print('x dim:', dataset.trajectory_list[0].X.shape[1])
     print(dataset.global_info)
+
+    algo2cnt = dict()
+    for t in dataset.trajectory_list:
+        designer = t.metadata['designer']
+        algo2cnt[designer] = algo2cnt.get(designer, 0) + 1
+    print(algo2cnt)
