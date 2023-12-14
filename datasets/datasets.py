@@ -40,7 +40,7 @@ class TrajectoryDataset():
                 os.makedirs(cache_dir)
             trajectory_list = self.create_cache(search_space_id, data_dir, cache_dir, block_size)
         else:
-            trajectory_list = self.load_cache(search_space_id, cache_dir, block_size, None)
+            trajectory_list = self.load_cache(search_space_id, cache_dir, block_size, 10)
             assert isinstance(trajectory_list, list)
         self.trajectory_list = trajectory_list
         # self.trajectory_list = filter_designer(self.trajectory_list)

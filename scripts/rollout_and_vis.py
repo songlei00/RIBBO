@@ -4,6 +4,7 @@ import copy
 import torch
 import wandb
 import random
+import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
@@ -73,6 +74,9 @@ def add_behavior(behavior_cfgs, problem, datasets):
             
     name2rollout = {}
     for a in algos:
+        if a not in behavior_rollout:
+            print(f'Trajectory for {a} is empty')
+            continue
         name2rollout[a] = {}
         for t in tasks:
             name2rollout[a][t] = {}
@@ -227,9 +231,7 @@ def post_init(args):
         "metabo_synthetic": MetaBOSyntheticMetaProblem,
     }.get(args.problem)
     
-args = parse_args("scripts/configs/rollout/hpob.py", post_init=post_init)
-# args = parse_args("scripts/configs/rollout/synthetic.py", post_init=post_init)
-# args = parse_args("scripts/configs/rollout/metabo_synthetic.py", post_init=post_init)
+args = parse_args(post_init=post_init)
 setup(args, _seed=0)
 
 # define the problem and the dataset
@@ -301,43 +303,52 @@ def load_model(problem, ckpt_cfgs):
     return ckpts
 
     
-ckpt_cfgs = {
-    "DT": {
-        "path": [f"log/hpob/dt-max150-input50/5527-seed0-12-04-11-01-850930/ckpt/{e}.ckpt" for e in [1000, 2000, 3000]], 
-        "args": {"input_seq_len": 50, }, 
-        "rollout_args": {"eval_mode": "dynamic", "regret_strategy": "relabel", "init_regret": 20.0}, 
-        "type": "dt"
-    }, 
-    "DT-layer8": {
-        "path": [f"log/hpob/dt-max150-input50-layer8/5527-seed0-12-04-17-42-1353752/ckpt/{e}.ckpt" for e in [1000, 2000, 3000]], 
-        "args": {"input_seq_len": 50, "num_layers": 8}, 
-        "rollout_args": {"eval_mode": "dynamic", "regret_strategy": "relabel", "init_regret": 20.0}, 
-        "type": "dt"
-    }
-}
-
-# ckpt_cfgs = dict()
-# for epoch in range(1000, 5001, 1000):
-#     path = 'dt-default/SharpRidge-seed0-12-03-19-12-3383349'
-#     ckpt_cfgs['DT_' + str(epoch)] = {
-#         'path': [
-#             f'log/{path}/ckpt/{epoch}.ckpt',
-#         ],
+# ckpt_cfgs = {
+#     "DT": {
+#         "path": [f"log/hpob/dt-max150-input50/5527-seed0-12-04-11-01-850930/ckpt/{e}.ckpt" for e in [1000, 2000, 3000]], 
 #         "args": {"input_seq_len": 50, }, 
-#         "rollout_args": {"eval_mode": "dynamic", "regret_strategy": "relabel", "init_regret": 0.0}, 
+#         "rollout_args": {"eval_mode": "dynamic", "regret_strategy": "relabel", "init_regret": 20.0}, 
 #         "type": "dt"
-#     } 
+#     }, 
+#     "DT-layer8": {
+#         "path": [f"log/hpob/dt-max150-input50-layer8/5527-seed0-12-04-17-42-1353752/ckpt/{e}.ckpt" for e in [1000, 2000, 3000]], 
+#         "args": {"input_seq_len": 50, "num_layers": 8}, 
+#         "rollout_args": {"eval_mode": "dynamic", "regret_strategy": "relabel", "init_regret": 20.0}, 
+#         "type": "dt"
+#     }
+# }
+
+ckpt_cfgs = dict()
+with open(f'scripts/ckpt_configs/{args.problem}/{args.id}.yaml', 'r') as f:
+    load_dict = yaml.safe_load(f)
+    for name in load_dict:
+        cfg = dict()
+        path = load_dict[name]['path']
+        epochs = load_dict[name]['epochs']
+        del load_dict[name]['epochs']
+        for epoch in epochs:
+            curr_path = [
+                f'log/{args.problem}/{p}/ckpt/{epoch}.ckpt' for p in path
+            ]
+            cfg[name + '_' + str(epoch)] = dict(load_dict[name])
+            cfg[name + '_' + str(epoch)]['path'] = curr_path
+        ckpt_cfgs.update(cfg)
+        
+print('===== ckpt configs =====')
+for k, v in ckpt_cfgs.items():
+    print(k, v)
+print('========================')
 
 behavior_cfgs = {
     "add_behavior": True, 
     "num": 5, 
+    "Random": False, 
+    "ShuffledGridSearch": False,
     "CMAES": True, 
     "EagleStrategy": True, 
-    "HeBO": False, 
     "HillClimbing": True, 
-    "Random": False, 
     "RegularizedEvolution": True, 
-    "ShuffledGridSearch": False
+    "BotorchBO": True, 
 }
 
 for mode, problem in problem_dict.items():

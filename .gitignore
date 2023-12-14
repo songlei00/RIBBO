@@ -8,3 +8,4 @@ plot/*
 data
 wandb
 rollout_and_vis_gcx.py
+scripts/ckpt_configs
