@@ -10,6 +10,8 @@ from problems.base import MetaProblemBase
 from datasets.datasets import TrajectoryIterableDataset
 
 
+# from https://github.com/boschresearch/MetaBO/blob/master/metabo/environment/objectives.py
+# 
 ## Global optimization benchmark functions
 # Branin
 def bra(x):
