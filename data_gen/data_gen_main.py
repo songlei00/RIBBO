@@ -73,7 +73,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--problem', type=str, required=True, choices=['hpob', 'synthetic', 'metabo_synthetic'])
+    parser.add_argument('--problem', type=str, required=True)
     parser.add_argument('--designer', type=str, required=True)
     parser.add_argument('--search_space_id', type=str, required=True)
     parser.add_argument('--dataset_id', type=str, required=True)
@@ -100,6 +100,12 @@ if __name__ == '__main__':
         )
     elif args.problem == 'metabo_synthetic':
         from data_gen.metabo_synthetic_problem_statement import problem_statement
+        problem, f = problem_statement(
+            args.search_space_id,
+            args.dataset_id,
+        )
+    elif args.problem == 'real_world_problem':
+        from data_gen.real_world_problem_statement import problem_statement
         problem, f = problem_statement(
             args.search_space_id,
             args.dataset_id,

@@ -36,7 +36,7 @@ def get_cmd(problem, designer, search_space_id, dataset_id, out_name, length, se
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--problem', type=str, required=True, choices=['hpob', 'synthetic', 'metabo_synthetic'])
+    parser.add_argument('--problem', type=str, required=True, choices=['hpob', 'synthetic', 'metabo_synthetic', 'real_world_problem'])
     parser.add_argument('--seed', type=int, required=True)
     parser.add_argument('--smoke_test', action='store_true')
     parser.add_argument('--cpu_start', type=int, required=True)
@@ -60,6 +60,16 @@ if __name__ == '__main__':
         summary_stats = {name: [str(i) for i in range(s, e)] for name in bbob_func_names}
     elif args.problem == 'metabo_synthetic':
         names = ('Branin2', 'Hartmann3')
+        summary_stats = {name: [str(i) for i in range(s, e)] for name in names}
+    elif args.problem == 'real_world_problem':
+        names = (
+            'LunarLander',
+            'PDE',
+            'Optics',
+            'RobotPush',
+            'Rover',
+            'Furuta',
+        )
         summary_stats = {name: [str(i) for i in range(s, e)] for name in names}
     else:
         raise NotImplementedError

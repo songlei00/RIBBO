@@ -11,6 +11,9 @@ class RealWorldProblemTest(unittest.TestCase):
             'LunarLander',
             'PDE',
             'Optics',
+            'Furuta',
+            'RobotPush',
+            'Rover',
         )
         for name in problem_names:
             for seed in range(3):
@@ -19,5 +22,4 @@ class RealWorldProblemTest(unittest.TestCase):
                 lb, ub = problem.lb, problem.ub
                 X = torch.rand(5, dim) * (ub - lb) + lb
                 Y = problem(X)
-                print(name)
-                print(Y)
+                self.assertEqual(Y.shape, (5, 1))
