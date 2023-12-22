@@ -5,7 +5,8 @@ seed = 0
 debug = False
 name = "rollout"
 
-id = "Branin2"
+ckpt_id = "Branin2"
+eval_id = "Branin2"
 
 root_dir = None
 data_dir = './data/generated_data/metabo_synthetic/'

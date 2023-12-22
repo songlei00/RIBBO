@@ -221,8 +221,8 @@ def plot(name2rollout, datasets, output_path, palette=None):
 #%% 
 
 def post_init(args):
-    args.train_datasets = args.train_datasets[args.id][:30]
-    args.test_datasets = args.test_datasets[args.id][:15]
+    args.train_datasets = args.train_datasets[args.eval_id][:30]
+    args.test_datasets = args.test_datasets[args.eval_id][:15]
     args.eval_episodes = 20
     args.deterministic_eval = False
     args.problem_cls = {
@@ -245,10 +245,10 @@ for mode in ('train', 'test'):
         data_dir = args.data_dir.rstrip('/') + '_' + mode + '/'
         cache_dir = args.cache_dir.rstrip('/') + '_' + mode + '/'
 
-    if os.path.exists(cache_dir + args.id):
+    if os.path.exists(cache_dir + args.eval_id):
         print(f'Load {mode} data')
         problem = args.problem_cls(
-            search_space_id=args.id, 
+            search_space_id=args.eval_id, 
             root_dir=args.root_dir, 
             data_dir=data_dir,
             cache_dir=cache_dir, 
@@ -319,7 +319,7 @@ def load_model(problem, ckpt_cfgs):
 # }
 
 ckpt_cfgs = dict()
-with open(f'scripts/ckpt_configs/{args.problem}/{args.id}.yaml', 'r') as f:
+with open(f'scripts/ckpt_configs/{args.problem}/{args.ckpt_id}.yaml', 'r') as f:
     load_dict = yaml.safe_load(f)
     for name in load_dict:
         cfg = dict()
@@ -377,4 +377,4 @@ for mode, problem in problem_dict.items():
         # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}-{algo}")
     # elif model_type == 'dt':
         # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}-{init_regret}-{regret_strategy}-dyna")
-    plot(name2rollout, rollout_datasets, output_path=f"./plot/rollout/{args.problem}/{args.id}/{mode}/")
+    plot(name2rollout, rollout_datasets, output_path=f"./plot/rollout/{args.problem}/{args.ckpt_id}-{args.eval_id}/{mode}/")

@@ -5,7 +5,8 @@ seed = 0
 debug = False
 name = "rollout"
 
-id = "6767"
+ckpt_id = "6767"
+eval_id = "6767"
 
 root_dir = "./data/downloaded_data/hpob/"
 data_dir = './data/generated_data/hpob/'

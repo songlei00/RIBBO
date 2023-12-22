@@ -1,6 +1,6 @@
 import os
 import pickle
-from typing import List, Optional
+from typing import List, Optional, Union
 from collections import defaultdict
 
 import torch
@@ -23,7 +23,7 @@ from data_augment.operators import augment_transform
 class TrajectoryDataset():
     def __init__(
         self, 
-        search_space_id: str,
+        search_space_id: Union[str, List[str]],
         data_dir: str,
         cache_dir: str, 
         input_seq_len: int=300, 
@@ -33,15 +33,23 @@ class TrajectoryDataset():
         augment: bool = False,
         update: bool = False,
     ) -> None:
-        cache_dir = os.path.join(cache_dir, search_space_id)
+        if isinstance(search_space_id, str):
+            search_space_id = [search_space_id]
+        cache_dirs = []
+        for id in search_space_id:
+            cache_dirs.append(os.path.join(cache_dir, id))
+
         block_size = 50
-        if not os.path.exists(cache_dir) or update:
-            if not os.path.exists(cache_dir):
-                os.makedirs(cache_dir)
-            trajectory_list = self.create_cache(search_space_id, data_dir, cache_dir, block_size)
-        else:
-            trajectory_list = self.load_cache(search_space_id, cache_dir, block_size, 10)
-            assert isinstance(trajectory_list, list)
+        trajectory_list = []
+        for id, cache_dir in zip(search_space_id, cache_dirs):
+            if not os.path.exists(cache_dir) or update:
+                if not os.path.exists(cache_dir):
+                    os.makedirs(cache_dir)
+                t = self.create_cache(id, data_dir, cache_dir, block_size)
+            else:
+                t = self.load_cache(id, cache_dir, block_size, 10)
+                assert isinstance(t, list)
+            trajectory_list.extend(t)
         self.trajectory_list = trajectory_list
         # self.trajectory_list = filter_designer(self.trajectory_list)
         
@@ -238,7 +246,7 @@ class TrajectoryDataset():
 class TrajectoryDictDataset(TrajectoryDataset, Dataset):
     def __init__(
         self, 
-        search_space_id: str, 
+        search_space_id: Union[str, List[str]], 
         data_dir: str, 
         cache_dir: str, 
         input_seq_len: int=300, 
@@ -257,7 +265,7 @@ class TrajectoryDictDataset(TrajectoryDataset, Dataset):
 class TrajectoryIterableDataset(TrajectoryDataset, IterableDataset):
     def __init__(
         self, 
-        search_space_id: str, 
+        search_space_id: Union[str, List[str]], 
         data_dir: str, 
         cache_dir: str, 
         input_seq_len: int=300, 

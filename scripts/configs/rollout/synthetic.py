@@ -5,7 +5,8 @@ seed = 0
 debug = False
 name = "rollout"
 
-id = "Rastrigin"
+ckpt_id = "Rastrigin"
+eval_id = "Rastrigin"
 
 root_dir = None
 data_dir = './data/generated_data/synthetic/'
