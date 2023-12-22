@@ -76,15 +76,15 @@ class TrajectoryDataset():
         # get raw metrics
         self.id2info, self.global_info = self.get_dataset_info()
         self.algo = {
-            "ShuffledGridSearch": 0, 
-            "RegularizedEvolution": 1, 
-            "Random": 2, 
+            "Random": 0, 
+            "ShuffledGridSearch": 1, 
+            "RegularizedEvolution": 2, 
             "HillClimbing": 3, 
-            "HeBO": 4, 
-            "EagleStrategy": 5, 
-            "CMAES": 6,
-            "BotorchBO": 7,
-            "PyCMA": 8,
+            "EagleStrategy": 4, 
+            "CMAES": 5,
+            "BotorchBO": 6,
+            # "HeBO": 7, 
+            # "PyCMA": 8,
         }
         
         # calculate regrets
