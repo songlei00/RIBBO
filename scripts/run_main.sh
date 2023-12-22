@@ -42,7 +42,7 @@ do
         echo 'current proc id: '$proc_id
         echo 'current func: '$id', current gpu idx: '$curr_gpu
         {
-            echo scripts/run_${designer}.py \
+            python scripts/run_${designer}.py \
                 --config scripts/configs/${designer}/${problem}.py \
                 --name ${designer}-default \
                 --embed_dim 128 \
