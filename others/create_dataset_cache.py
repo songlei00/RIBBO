@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--problem', type=str, required=True, choices=['hpob', 'synthetic', 'metabo_synthetic'])
+parser.add_argument('--problem', type=str, required=True, choices=['hpob', 'synthetic', 'metabo_synthetic', 'real_world_problem'])
 parser.add_argument('--mode', type=str, default='train', choices=['train', 'test', 'validation'])
 args = parser.parse_args()
 
@@ -32,6 +32,16 @@ elif args.problem == 'synthetic':
     summary_stats = {name: [str(i) for i in range(s, e)] for name in bbob_func_names}
 elif args.problem == 'metabo_synthetic':
     names = ('Branin2', 'Hartmann3')
+    summary_stats = {name: [str(i) for i in range(s, e)] for name in names}
+elif args.problem == 'real_world_problem':
+    names = (
+        'LunarLander',
+        'PDE',
+        'Optics',
+        'RobotPush',
+        'Rover',
+        'Furuta',
+    )
     summary_stats = {name: [str(i) for i in range(s, e)] for name in names}
 else:
     raise NotImplementedError
