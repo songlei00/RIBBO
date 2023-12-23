@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Union
 from functools import partial
 
 import numpy as np
@@ -101,7 +101,7 @@ class SyntheticTorch(SyntheticNumpy):
 class SyntheticMetaProblem(MetaProblemBase):
     def __init__(
         self,
-        search_space_id: str,
+        search_space_id: Union[str, List[str]],
         root_dir: str,
         data_dir: str,
         cache_dir: str,
@@ -119,13 +119,19 @@ class SyntheticMetaProblem(MetaProblemBase):
         self.input_seq_len = input_seq_len
         self.scale_clip_range = scale_clip_range
 
+        if isinstance(self.search_space_id, list):
+            eval_id = self.search_space_id[0]
+            logging.warning('Evaluating on the first one for multiple search spaces')
+        else:
+            eval_id = self.search_space_id
         self.func = SyntheticNumpy(
-            self.search_space_id,
+            eval_id,
             '0',
             self.dim,
             self.lb,
             self.ub,
         )
+
         self.dataset = TrajectoryIterableDataset(
             search_space_id=search_space_id,
             data_dir=data_dir,
@@ -148,6 +154,9 @@ class SyntheticMetaProblem(MetaProblemBase):
     def forward(self, X: Tensor):
         assert X.ndim == 2
         assert (X >= -1 - 1e-6).all() and (X <= 1 + 1e-6).all()
+        if isinstance(self.search_space_id, list):
+            logging.warning('Evaluating on the first one for multiple search spaces')
+
         X_np = X.cpu().detach().numpy()
         Y_np = self.func(self.transform_x(X_np, lb=self.lb, ub=self.ub))
         normalized_y, normalized_regret = self.get_normalized_y_and_regret(Y_np)
