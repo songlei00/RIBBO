@@ -62,11 +62,13 @@ for search_space_id in summary_stats:
         data_dir=data_dir,
         cache_dir=cache_dir, 
         input_seq_len=300, 
+        max_input_seq_len=1000,
         normalize_method='random',
     )
 
     print('length:', len(dataset))
     print('x dim:', dataset.trajectory_list[0].X.shape[1])
+    print('trajectory len:', len(dataset.trajectory_list[0].X))
     print(dataset.global_info)
 
     algo2cnt = dict()

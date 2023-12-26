@@ -223,7 +223,7 @@ def evaluate_bc_transformer_designer(
                 last_y=last_normalized_y, 
                 deterministic=deterministic,
             )
-            last_normalized_y, info = problem.forward(last_x)
+            last_normalized_y, info = problem.forward(last_x.cpu())
             last_y = info["raw_y"]
             last_normalized_onestep_regret = info["normalized_onestep_regret"]
 

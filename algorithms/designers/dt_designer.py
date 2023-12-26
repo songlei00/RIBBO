@@ -239,7 +239,7 @@ def evaluate_decision_transformer_designer(
                 deterministic=deterministic, 
                 regret_strategy=regret_strategy, 
             )
-            last_normalized_y, info = problem.forward(last_x)
+            last_normalized_y, info = problem.forward(last_x.cpu())
             last_y = info["raw_y"]
             last_normalized_onestep_regret = info["normalized_onestep_regret"]
 

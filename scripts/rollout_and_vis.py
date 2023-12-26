@@ -21,6 +21,7 @@ from algorithms.modules.dt import DecisionTransformer
 from problems.hpob_problem import HPOBMetaProblem
 from problems.synthetic import SyntheticMetaProblem
 from problems.metabo_synthetic import MetaBOSyntheticMetaProblem
+from problems.real_world_problem import RealWorldMetaProblem
 
 from UtilsRL.exp import parse_args, setup
 
@@ -229,6 +230,7 @@ def post_init(args):
         "hpob": HPOBMetaProblem, 
         "synthetic": SyntheticMetaProblem,
         "metabo_synthetic": MetaBOSyntheticMetaProblem,
+        "real_world_problem": RealWorldMetaProblem,
     }.get(args.problem)
     
 args = parse_args(post_init=post_init)

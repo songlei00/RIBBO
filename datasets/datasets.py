@@ -69,6 +69,8 @@ class TrajectoryDataset():
             t.y = t.y[: max_input_seq_len]
             t.metadata['length'] = max_input_seq_len
 
+        print('Trajectory len:', len(self.trajectory_list[0].X))
+
         if augment:
             augment_trajectory_list = []
             for filter_fn, transform, ratio in augment_transform:
