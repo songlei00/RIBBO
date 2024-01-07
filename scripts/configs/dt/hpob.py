@@ -14,6 +14,8 @@ normalize_method = "random"
 augment = False
 prioritize = False
 prioritize_alpha = 1.0
+n_block = 100
+filter_data = False
 
 embed_dim = 256
 num_layers = 12

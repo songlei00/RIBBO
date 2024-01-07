@@ -32,6 +32,7 @@ class TrajectoryDataset():
         scale_clip_range: Optional[List[float]]=None, 
         augment: bool = False,
         update: bool = False,
+        filter_data: bool = False,
         n_block: int = 1,
     ) -> None:
         if isinstance(search_space_id, str):
@@ -52,7 +53,8 @@ class TrajectoryDataset():
                 assert isinstance(t, list)
             trajectory_list.extend(t)
         self.trajectory_list = trajectory_list
-        # self.trajectory_list = filter_designer(self.trajectory_list)
+        if filter_data:
+            self.trajectory_list = filter_designer(self.trajectory_list)
         
         designer_cnt = dict()
         for t in self.trajectory_list:

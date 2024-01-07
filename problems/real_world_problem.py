@@ -209,6 +209,7 @@ class RealWorldMetaProblem(MetaProblemBase):
         prioritize: bool = False,
         prioritize_alpha: float = 1.0,
         n_block: int = 1,
+        filter_data: bool = False,
     ):
         self.search_space_id = search_space_id
         self.input_seq_len = input_seq_len
@@ -231,6 +232,7 @@ class RealWorldMetaProblem(MetaProblemBase):
             prioritize=prioritize,
             prioritize_alpha=prioritize_alpha,
             n_block=n_block,
+            filter_data=filter_data,
         )
 
         self.dataset.transform_x(partial(self.transform_x, reverse=True, lb=self.lb, ub=self.ub))

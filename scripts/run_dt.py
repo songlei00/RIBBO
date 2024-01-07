@@ -60,7 +60,8 @@ problem = args.problem_cls(
     augment=args.augment,
     prioritize=args.prioritize, 
     prioritize_alpha=args.prioritize_alpha, 
-    n_block=100,
+    n_block=args.n_block,
+    filter_data=args.filter_data,
 )
 
 dataset = problem.get_dataset()
