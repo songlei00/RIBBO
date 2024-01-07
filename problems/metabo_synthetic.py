@@ -229,6 +229,7 @@ class MetaBOSyntheticMetaProblem(MetaProblemBase):
         augment: bool = False,
         prioritize: bool = False,
         prioritize_alpha: float = 1.0,
+        n_block: int = 1,
     ):
         self.search_space_id = search_space_id
         self.input_seq_len = input_seq_len
@@ -248,6 +249,7 @@ class MetaBOSyntheticMetaProblem(MetaProblemBase):
             scale_clip_range=scale_clip_range,
             prioritize=prioritize,
             prioritize_alpha=prioritize_alpha,
+            n_block=n_block,
         )
 
         self.dataset.transform_x(partial(self.transform_x, reverse=True))

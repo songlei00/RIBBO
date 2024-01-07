@@ -15,9 +15,9 @@ eval_episodes = 20
 max_input_seq_len = 300
 
 class bc_config(NameSpace):
-    embed_dim = 128
+    embed_dim = 256
     num_layers = 12
-    num_heads = 4
+    num_heads = 8
     attention_dropout = 0.1
     residual_dropout = 0.1
     embed_dropout = 0.1
@@ -30,9 +30,9 @@ class bc_config(NameSpace):
     use_abs_timestep = True
 
 class dt_config(NameSpace):
-    embed_dim = 128
+    embed_dim = 256
     num_layers = 12
-    num_heads = 4
+    num_heads = 8
     attention_dropout = 0.1
     residual_dropout = 0.1
     embed_dropout = 0.1
@@ -46,9 +46,9 @@ class dt_config(NameSpace):
 
 class optformer_config(NameSpace):
     algo_num = 7
-    embed_dim = 128
+    embed_dim = 256
     num_layers = 12
-    num_heads = 4
+    num_heads = 8
     attention_dropout = 0.1
     residual_dropout = 0.1
     embed_dropout = 0.1

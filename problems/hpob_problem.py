@@ -88,6 +88,7 @@ class HPOBMetaProblem(MetaProblemBase):
         prioritize: bool=False, 
         prioritize_alpha: float=1.0, 
         nthread: int=4,
+        n_block: int=1,
     ):
         assert search_space_id.isnumeric()
         self.search_space_id = search_space_id
@@ -107,7 +108,8 @@ class HPOBMetaProblem(MetaProblemBase):
             scale_clip_range=scale_clip_range, 
             augment=augment,
             prioritize=prioritize, 
-            prioritize_alpha=prioritize_alpha
+            prioritize_alpha=prioritize_alpha,
+            n_block=n_block,
         )
 
         # transform the dataset x

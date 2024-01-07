@@ -91,17 +91,18 @@ def add_behavior(behavior_cfgs, problem, datasets):
     del behavior_rollout
     return name2rollout          
 
-def plot(name2rollout, datasets, output_path, palette=None):
-    if palette is None:
-        palette = [
-            'violet', 'slategray', 'darkviolet', 'royalblue', 'mediumseagreen', 'orange', 'red',
-            'blue', 'green', 'cyan', 'magenta', 'yellow', 'black', 'purple', 'pink', 'brown', 
-            'teal',  'lightblue', 'lime', 'lavender', 'turquoise', 'darkgreen', 'tan', 'salmon', 
-            'gold',  'darkred', 'darkblue',
-        ]
-        palette = {
-            n: palette[i] for i, n in enumerate(name2rollout.keys())
-        }
+def plot(name2rollout, datasets, output_path, palette):
+    colors = [
+        'blue', 'green', 'cyan', 'magenta', 'yellow', 'black', 'purple', 'pink', 'brown', 
+        'teal',  'lightblue', 'lime', 'lavender', 'turquoise', 'darkgreen', 'tan', 'salmon', 
+        'gold',  'darkred', 'darkblue',
+    ]
+    i = 0
+    for n in name2rollout.keys():
+        if n not in palette:
+            palette[n] = colors[i]
+            i += 1
+
     print(f"Saving to {output_path}")
     os.makedirs(output_path, exist_ok=True)
     total_num = len(datasets) + 2
@@ -259,6 +260,7 @@ for mode in ('train', 'test'):
             normalize_method='random', # does not matter here 
             scale_clip_range=None, # does not matter here
             prioritize=False, # does not matter here
+            n_block=1,
         )
         problem_dict[mode] = problem
 
@@ -353,6 +355,16 @@ behavior_cfgs = {
     "BotorchBO": True, 
 }
 
+palette = {
+    'Random': 'violet',
+    'ShuffledGridSearch': 'slategray',
+    'CMAES': 'darkviolet',
+    'EagleStrategy': 'royalblue',
+    'HillClimbing': 'mediumseagreen',
+    'RegularizedEvolution': 'orange',
+    'Botorch': 'red',
+}
+
 for mode, problem in problem_dict.items():
     ckpts = load_model(problem, ckpt_cfgs)
     if mode == 'train':
@@ -379,4 +391,9 @@ for mode, problem in problem_dict.items():
         # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}-{algo}")
     # elif model_type == 'dt':
         # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}-{init_regret}-{regret_strategy}-dyna")
-    plot(name2rollout, rollout_datasets, output_path=f"./plot/rollout/{args.problem}/{args.ckpt_id}-{args.eval_id}/{mode}/")
+    plot(
+        name2rollout,
+        rollout_datasets,
+        output_path=f"./plot/rollout/{args.problem}/{args.ckpt_id}-{args.eval_id}/{mode}/",
+        palette=palette,
+    )

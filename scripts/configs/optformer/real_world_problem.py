@@ -16,9 +16,9 @@ prioritize = False
 prioritize_alpha = 1.0
 
 algo_num = 7
-embed_dim = 128
+embed_dim = 256
 num_layers = 12
-num_heads = 4
+num_heads = 8
 attention_dropout = 0.1
 residual_dropout = 0.1
 embed_dropout = 0.1
@@ -29,8 +29,8 @@ input_seq_len = 300
 max_input_seq_len = 300
 scale_clip_range = None
 
-batch_size = 128
-num_workers = 4
+batch_size = 64
+num_workers = 1
 
 num_epoch = 5000
 step_per_epoch = 100

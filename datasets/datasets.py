@@ -32,6 +32,7 @@ class TrajectoryDataset():
         scale_clip_range: Optional[List[float]]=None, 
         augment: bool = False,
         update: bool = False,
+        n_block: int = 1,
     ) -> None:
         if isinstance(search_space_id, str):
             search_space_id = [search_space_id]
@@ -39,7 +40,7 @@ class TrajectoryDataset():
         for id in search_space_id:
             cache_dirs.append(os.path.join(cache_dir, id))
 
-        block_size = 50
+        block_size = 5
         trajectory_list = []
         for id, cache_dir in zip(search_space_id, cache_dirs):
             if not os.path.exists(cache_dir) or update:
@@ -47,7 +48,7 @@ class TrajectoryDataset():
                     os.makedirs(cache_dir)
                 t = self.create_cache(id, data_dir, cache_dir, block_size)
             else:
-                t = self.load_cache(id, cache_dir, block_size, 10)
+                t = self.load_cache(id, cache_dir, block_size, n_block)
                 assert isinstance(t, list)
             trajectory_list.extend(t)
         self.trajectory_list = trajectory_list
@@ -82,9 +83,18 @@ class TrajectoryDataset():
 
             self.trajectory_list += augment_trajectory_list
             print('After augmentation, len: {}'.format(len(self.trajectory_list)))
+
+        # group by search_space_id and dataset_id
+        # trajectory_dict = dict()
+        # for t in self.trajectory_list:
+        #     key = t.metadata['search_space_id'] + t.metadata['dataset_id']
+        #     if key not in trajectory_dict:
+        #         trajectory_dict[key] = []
+        #     trajectory_dict[key].append(t)
+        # self.trajectory_dict = trajectory_dict
         
         # get raw metrics
-        self.id2info, self.global_info = self.get_dataset_info()
+        self.id2info, self.sp_id2info, self.global_info = self.get_dataset_info()
         self.algo = {
             "Random": 0, 
             "ShuffledGridSearch": 1, 
@@ -146,53 +156,105 @@ class TrajectoryDataset():
         return trajectory_list
 
     def get_dataset_info(self):
-        id2info = defaultdict(dict)
+        def get_trajectory_list_x_max(t_list):
+            return max(t.X.max() for t in t_list).item()
+        def get_trajectory_list_x_min(t_list):
+            return min(t.X.min() for t in t_list).item()
+        def get_trajectory_list_y_max(t_list):
+            return max(t.y.max() for t in t_list).item()
+        def get_trajectory_list_y_min(t_list):
+            return min(t.y.min() for t in t_list).item()
+        
+        id2info = dict() # search_spce_id -> dataset_id -> info
+        sp_id2info = dict() # search_space_id -> info
         global_info = dict()
 
         # group the trajectory by id, and calc the metrics
-        id2group = defaultdict(list)        
+        grouped_trajectory_dict = dict()
         for t in self.trajectory_list:
-            dataset_id = t.metadata["dataset_id"]
-            id2group[dataset_id].append(t)
-        for id in id2group:
-            y_max = max(t.y.max() for t in id2group[id]).item()
-            y_min = min(t.y.min() for t in id2group[id]).item()
-            best_y_average = sum(t.y.max() for t in id2group[id]) / len(id2group[id])
-            span = [t.y.max() - t.y.min() for t in id2group[id]]
-            span_min = min(span).item()
-            span_max = max(span).item()
-            span_mean = np.mean(span).item()
-            id2info[id].update({
-                "y_max": y_max, 
-                "y_min": y_min, 
-                "best_y_average": best_y_average,
-                'span_min': span_min,
-                'span_max': span_max,
-                'span_mean': span_mean,
-            })
+            sp_id = t.metadata['search_space_id']
+            ds_id = t.metadata['dataset_id']
+            if sp_id not in grouped_trajectory_dict:
+                grouped_trajectory_dict[sp_id] = dict()
+            if ds_id not in grouped_trajectory_dict[sp_id]:
+                grouped_trajectory_dict[sp_id][ds_id] = []
+            grouped_trajectory_dict[sp_id][ds_id].append(t)
+
+        # id info
+        for sp_id in grouped_trajectory_dict:
+            for ds_id in grouped_trajectory_dict[sp_id]:
+                t_list = grouped_trajectory_dict[sp_id][ds_id]
+
+                x_max = get_trajectory_list_x_max(t_list)
+                x_min = get_trajectory_list_x_min(t_list)
+                y_max = get_trajectory_list_y_max(t_list)
+                y_min = get_trajectory_list_y_min(t_list)
+
+                # best_y_average = sum(t.y.max() for t in id2group[id]) / len(id2group[id])
+                # span = [t.y.max() - t.y.min() for t in id2group[id]]
+                # span_min = min(span).item()
+                # span_max = max(span).item()
+                # span_mean = np.mean(span).item()
+
+                if sp_id not in id2info:
+                    id2info[sp_id] = dict()
+                id2info[sp_id][ds_id] = {
+                    'x_max': x_max,
+                    'x_min': x_min,
+                    'y_max': y_max,
+                    'y_min': y_min,
+                }
+
+        # search space info
+        for sp_id in grouped_trajectory_dict:
+            sp_t_list = []
+            for ds_id in grouped_trajectory_dict[sp_id]:
+                sp_t_list.extend(grouped_trajectory_dict[sp_id][ds_id])
+            x_max = get_trajectory_list_x_max(sp_t_list)
+            x_min = get_trajectory_list_x_min(sp_t_list)
+            y_max = get_trajectory_list_y_max(sp_t_list)
+            y_min = get_trajectory_list_y_min(sp_t_list)
+            y_max_mean = sum([id2info[sp_id][ds_id]['y_max'] for ds_id in id2info[sp_id]]) / len(id2info[sp_id])
+            y_min_mean = sum([id2info[sp_id][ds_id]['y_min'] for ds_id in id2info[sp_id]]) / len(id2info[sp_id])
+
+            sp_id2info[sp_id] = {
+                'x_max': x_max,
+                'x_min': x_min,
+                'y_max': y_max,
+                'y_min': y_min,
+                'y_max_mean': y_max_mean,
+                'y_min_mean': y_min_mean,
+            }
         
         # global info
-        x_min = min(t.X.min() for t in self.trajectory_list).item()
-        x_max = max(t.X.max() for t in self.trajectory_list).item()
-        y_min = min([id2info[id]["y_min"] for id in id2info])
-        y_max = max([id2info[id]["y_max"] for id in id2info])
-        y_max_mean = sum([id2info[id]["y_max"] for id in id2info]) / len(id2info)
-        y_min_mean = sum([id2info[id]["y_min"] for id in id2info]) / len(id2info)
-        global_info.update({
+        x_max = max([sp_id2info[sp_id]['x_max'] for sp_id in sp_id2info])
+        x_min = min([sp_id2info[sp_id]['x_min'] for sp_id in sp_id2info])
+        y_max = max([sp_id2info[sp_id]["y_max"] for sp_id in sp_id2info])
+        y_min = min([sp_id2info[sp_id]["y_min"] for sp_id in sp_id2info])
+        y_max_sum, y_min_sum, cnt = 0, 0, 0
+        for sp_id in id2info:
+            for ds_id in id2info[sp_id]:
+                y_max_sum += id2info[sp_id][ds_id]['y_max']
+                y_min_sum += id2info[sp_id][ds_id]['y_min']
+                cnt += 1
+        y_max_mean = y_max_sum / cnt
+        y_min_mean = y_min_sum / cnt
+        global_info = {
             "x_min": x_min, 
             "x_max": x_max, 
             "y_min": y_min, 
             "y_max": y_max, 
             "y_max_mean": y_max_mean, 
             "y_min_mean": y_min_mean, 
-            "train_datasets": sorted(list(id2info.keys()))
-        })
-        return id2info, global_info
+            'search_space_ids': sorted(list(sp_id2info.keys())),
+        }
+        return id2info, sp_id2info, global_info
 
     def set_regrets(self):
         for i in range(len(self.trajectory_list)):
-            id = self.trajectory_list[i].metadata["dataset_id"]
-            y_max = self.id2info[id]["y_max"]
+            sp_id = self.trajectory_list[i].metadata['search_space_id']
+            ds_id = self.trajectory_list[i].metadata['dataset_id']
+            y_max = self.id2info[sp_id][ds_id]['y_max']
             self.trajectory_list[i].regrets = metric_regret(self.trajectory_list[i], y_max)
         
     def transform_x(self, fn):
@@ -204,17 +266,12 @@ class TrajectoryDataset():
     
     def __getitem__(self, idx):
         trajectory = self.trajectory_list[idx]
-        # best_y = self.id2info[trajectory.metadata['dataset_id']]['best_y']
         traj_len = trajectory.X.shape[0]
         start_idx = np.random.choice(traj_len+1-self.input_seq_len)
         
         timesteps = torch.arange(start_idx, start_idx+self.input_seq_len)
         
-        y, regrets = self.normalize_y_and_regrets(
-            trajectory.metadata["dataset_id"], 
-            trajectory.y, 
-            trajectory.regrets
-        )
+        y, regrets = self.normalize_y_and_regrets(trajectory)
         return {
             "x": trajectory.X[start_idx:start_idx+self.input_seq_len], 
             "y": y[start_idx:start_idx+self.input_seq_len].unsqueeze(-1), 
@@ -225,24 +282,26 @@ class TrajectoryDataset():
             "masks": torch.ones_like(timesteps).float()
         }
         
-    def normalize_y_and_regrets(self, id, y, regrets):
+    def normalize_y_and_regrets(self, t):
         if self.normalize_method == "none":
-            return y, regrets
+            return t.y, t.regrets
         elif self.normalize_method == "random":
-            dataset_y_min, dataset_y_max = self.id2info[id]["y_min"], self.id2info[id]["y_max"]
+            sp_id, ds_id = t.metadata['search_space_id'], t.metadata['dataset_id']
+            dataset_y_min, dataset_y_max = self.id2info[sp_id][ds_id]['y_min'], self.id2info[sp_id][ds_id]['y_max']
             span = (dataset_y_max - dataset_y_min + 1e-6) / 2.0
             l = np.random.uniform(low=dataset_y_min-span/2, high=dataset_y_min+span/2)
             h = np.random.uniform(low=dataset_y_max-span/2, high=dataset_y_max+span/2)
             scale = h-l
             if self.scale_clip_range is not None:
                 scale = np.clip(scale, self.scale_clip_range[0], self.scale_clip_range[1])
-            return (y-l) / scale, regrets / scale
+            return (t.y-l) / scale, t.regrets / scale
         elif self.normalize_method == "dataset": 
-            dataset_y_min, dataset_y_max = self.id2info[id]["y_min"], self.id2info[id]["y_max"]
+            sp_id, ds_id = t.metadata['search_space_id'], t.metadata['dataset_id']
+            dataset_y_min, dataset_y_max = self.id2info[sp_id][ds_id]['y_min'], self.id2info[sp_id][ds_id]['y_max']
             scale = dataset_y_max - dataset_y_min + 1e-6
             if self.scale_clip_range is not None:
                 scale = np.clip(scale, self.scale_clip_range[0], self.scale_clip_range[1])
-            return (y - dataset_y_min) / scale, regrets / scale
+            return (t.y - dataset_y_min) / scale, t.regrets / scale
             
 
 class TrajectoryDictDataset(TrajectoryDataset, Dataset):
@@ -293,8 +352,8 @@ class TrajectoryIterableDataset(TrajectoryDataset, IterableDataset):
             
             metric_values = []
             for i, t in enumerate(self.trajectory_list):
-                dataset_id = t.metadata["dataset_id"]
-                span = self.id2info[dataset_id]["y_max"] - self.id2info[dataset_id]["y_min"]
+                sp_id, ds_id = t.metadata['search_space_id'], t.metadata['dataset_id']
+                span = self.id2info[sp_id][ds_id]["y_max"] - self.id2info[sp_id][ds_id]["y_min"]
                 # span_ratio = self.id2info[dataset_id]["span_max"] / self.id2info[dataset_id]["span_mean"]
                 # metric_values.append(self.metric_fn(span_ratio))
                 metric_values.append(self.metric_fn(span))
