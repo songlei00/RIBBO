@@ -317,9 +317,22 @@ class TrajectoryDictDataset(TrajectoryDataset, Dataset):
         scale_clip_range: Optional[List[float]]=None, 
         augment: bool=False,
         update: bool=False, 
-        *args, **kwargs
+        filter_data: bool = False,
+        n_block: int = 1,
     ):
-        TrajectoryDataset.__init__(self, search_space_id, data_dir, cache_dir, input_seq_len, normalize_method, scale_clip_range, augment, update)
+        TrajectoryDataset.__init__(
+            self,
+            search_space_id,
+            data_dir,
+            cache_dir,
+            input_seq_len,
+            normalize_method,
+            scale_clip_range,
+            augment=augment,
+            update=update,
+            filter_data=filter_data,
+            n_block=n_block,
+        )
         Dataset.__init__(self)
         
     def __getitem__(self, idx):
@@ -339,9 +352,23 @@ class TrajectoryIterableDataset(TrajectoryDataset, IterableDataset):
         update: bool=False, 
         prioritize: bool=False, 
         prioritize_alpha: float=1.0, 
-        *args, **kwargs
+        filter_data: bool = False,
+        n_block: int = 1,
     ):
-        TrajectoryDataset.__init__(self, search_space_id, data_dir, cache_dir, input_seq_len, max_input_seq_len, normalize_method, scale_clip_range, augment, update)
+        TrajectoryDataset.__init__(
+            self,
+            search_space_id,
+            data_dir,
+            cache_dir,
+            input_seq_len,
+            max_input_seq_len,
+            normalize_method,
+            scale_clip_range,
+            augment=augment,
+            update=update,
+            filter_data=filter_data,
+            n_block=n_block,
+        )
         IterableDataset.__init__(self)
         
         self.prioritize = prioritize
