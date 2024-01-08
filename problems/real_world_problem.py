@@ -74,7 +74,7 @@ class RealWorldProblem:
             params_domain.append([1-bound_scaling, 1+bound_scaling])
             params_domain = np.array(params_domain)
             sobol = Sobol(self.dim+1, seed=0)
-            params = sobol.random(128)
+            params = sobol.random(512)
             self.params = scale_from_unit_square_to_domain(params, params_domain)
 
             idx = int(self.dataset_id)
@@ -108,7 +108,7 @@ class RealWorldProblem:
                 [length_arm_low, length_arm_high],
             ])
             sobol = Sobol(self.dim, seed=0)
-            physical_params = sobol.random(128)
+            physical_params = sobol.random(512)
             self.physical_params = scale_from_unit_square_to_domain(
                 X=physical_params,
                 domain=physical_params_domain

@@ -188,7 +188,7 @@ class MetaBOSynthetic:
             return X * domain.ptp(axis=1) + domain[:, 0]
 
         sobol = Sobol(self.dim+1, seed=0)
-        fct_params = sobol.random(128)
+        fct_params = sobol.random(512)
         self.fct_params = scale_from_unit_square_to_domain(fct_params, fct_params_domain)
 
         idx = int(self.dataset_id)
