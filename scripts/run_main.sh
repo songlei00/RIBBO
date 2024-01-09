@@ -45,14 +45,15 @@ do
             python scripts/run_${designer}.py \
                 --config scripts/configs/${designer}/${problem}.py \
                 --name ${designer}-default \
-                --embed_dim 128 \
+                --embed_dim 256 \
+                --num_heads 8 \
                 --num_layers 12 \
                 --pos_encoding embed \
                 --input_seq_len 50 \
                 --max_input_seq_len 150 \
                 --wandb.project IBO-benchmark \
                 --num_epoch 5000 \
-                --batch_size 128 \
+                --batch_size 64 \
                 --eval_interval 9999 \
                 --id \"$id\" \
                 --seed $seed \

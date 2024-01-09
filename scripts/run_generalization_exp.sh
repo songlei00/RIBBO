@@ -18,14 +18,15 @@ function run() {
     python scripts/run_$1.py \
         --config scripts/configs/$1/$2.py \
         --name $1-default \
-        --embed_dim 128 \
+        --embed_dim 256 \
+        --num_heads 8 \
         --num_layers 12 \
         --pos_encoding embed \
         --input_seq_len 50 \
         --max_input_seq_len 150 \
         --wandb.project IBO-benchmark \
-        --num_epoch 10000 \
-        --batch_size 128 \
+        --num_epoch 5000 \
+        --batch_size 64 \
         --eval_interval 99999 \
         --id "[$3]" \
         --seed $4
