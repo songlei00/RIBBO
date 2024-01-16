@@ -406,6 +406,8 @@ ckpt_cfgs = dict()
 with open(f'scripts/ckpt_configs/{args.problem}/{args.ckpt_id}.yaml', 'r') as f:
     load_dict = yaml.safe_load(f)
     for name in load_dict:
+        if name == 'Var':
+            continue
         cfg = dict()
         path = load_dict[name]['path']
         epochs = load_dict[name]['epochs']
@@ -442,7 +444,7 @@ palette = {
     'EagleStrategy': 'royalblue',
     'HillClimbing': 'mediumseagreen',
     'RegularizedEvolution': 'orange',
-    'Botorch': 'red',
+    'BotorchBO': 'red',
 }
 
 for mode, problem in problem_dict.items():

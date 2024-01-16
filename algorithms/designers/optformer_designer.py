@@ -96,13 +96,13 @@ class OptFormerDesigner(BaseDesigner):
     def reset(self, algo: Union[str, int], eval_num=1):
         if isinstance(algo, str):
             algo = {
-                "ShuffledGridSearch": 0, 
-                "RegularizedEvolution": 1, 
-                "Random": 2, 
+                "Random": 0, 
+                "ShuffledGridSearch": 1, 
+                "RegularizedEvolution": 2, 
                 "HillClimbing": 3, 
-                "HeBO": 4, 
-                "EagleStrategy": 5, 
-                "CMAES": 6
+                "EagleStrategy": 4, 
+                "CMAES": 5,
+                "BotorchBO": 6,
             }.get(algo)
         self.cur_algo = algo * torch.ones([eval_num, 1], dtype=torch.int32).to(self.device)
         self.past_x = torch.zeros([eval_num, self.seq_len, self.x_dim], dtype=torch.float).to(self.device)
