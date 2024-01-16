@@ -7,6 +7,7 @@ import random
 import yaml
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from tqdm import trange
 from functools import partial
 from collections import defaultdict
@@ -68,10 +69,11 @@ def add_behavior(behavior_cfgs, problem, datasets):
     dataset = problem.get_dataset()
     tasks = set(datasets)
     algos = set([k for k in behavior_cfgs if k != "num" and k != "add_behavior" and behavior_cfgs[k] == True])
-    behavior_rollout = defaultdict(partial(defaultdict, list))
+    behavior_rollout = defaultdict(partial(defaultdict, partial(defaultdict, list)))
     for l in dataset.trajectory_list:
         if l.metadata["dataset_id"] in tasks and l.metadata["designer"] in algos:
-            behavior_rollout[l.metadata["designer"]][l.metadata["dataset_id"]].append(l.y)
+            behavior_rollout[l.metadata["designer"]][l.metadata["dataset_id"]]['y'].append(l.y)
+            behavior_rollout[l.metadata["designer"]][l.metadata["dataset_id"]]['X'].append(l.X)
             
     name2rollout = {}
     for a in algos:
@@ -81,10 +83,12 @@ def add_behavior(behavior_cfgs, problem, datasets):
         name2rollout[a] = {}
         for t in tasks:
             name2rollout[a][t] = {}
-            y = behavior_rollout[a][t][:num]
+            X = behavior_rollout[a][t]['X'][:num]
+            y = behavior_rollout[a][t]['y'][:num]
             y = torch.stack(y, dim=0)
             # y = y.reshape([5, num, -1]).mean(dim=1) # TODO: align testing
             normalized_y, normalized_regret = problem.get_normalized_y_and_regret(y, id=t)
+            name2rollout[a][t]["X"] = np.stack(X, axis=0)
             name2rollout[a][t]["y"] = y.numpy()
             name2rollout[a][t]["normalized_y"] = normalized_y.numpy()
             name2rollout[a][t]["normalized_regret"] = normalized_regret.numpy()
@@ -105,9 +109,9 @@ def plot(name2rollout, datasets, output_path, palette):
 
     print(f"Saving to {output_path}")
     os.makedirs(output_path, exist_ok=True)
-    total_num = len(datasets) + 2
+    total_num = len(datasets) + 2 # agg + legend
     nrows, ncols = 1+(total_num-1)//4, 4
-    
+
     # concatenate the seeds
     for name in name2rollout:
         if isinstance(name2rollout[name], list):
@@ -126,6 +130,58 @@ def plot(name2rollout, datasets, output_path, palette):
             data = name2rollout[name][id]["normalized_regret"]
             name2rollout[name][id]["normalized_cumulative_regret"] = np.flip(np.flip(data, 1).cumsum(axis=1), 1)
             
+    plt.figure(dpi=300)
+
+    # plot the path for Branin2
+    if args.ckpt_id == 'Branin2':
+        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.5))
+        y_min, y_max = 1e9, -1e9
+        for name in name2rollout:
+            for id in name2rollout[name]:
+                y_min_tmp = name2rollout[name][id]['y'].min()
+                y_max_tmp = name2rollout[name][id]['y'].max()
+                y_min = min(y_min, y_min_tmp)
+                y_max = max(y_max, y_max_tmp)
+
+        problem = problem_dict['train']
+        x1 = np.linspace(-1, 1, 100)
+        x2 = np.linspace(-1, 1, 100)
+        X1, X2 = np.meshgrid(x1, x2)
+        X = np.stack([X1.reshape(-1), X2.reshape(-1)], axis=1)
+        Y = np.zeros_like(X1)
+        n = 200
+        for i in range(n):
+            problem.reset_task(str(i))
+            _, info = problem.forward(torch.from_numpy(X))
+            Y += info['raw_y'].detach().cpu().numpy().reshape(Y.shape)
+        Y /= n
+        # N = np.arange((y_max + y_min)/2, y_max, 0.01)
+        CS = axes.contour(X1, X2, Y, 100, cmap=mpl.cm.viridis, zorder=axes.get_zorder()-1)
+        fig.colorbar(CS)
+
+        for name in name2rollout:
+            X_mean = np.stack([v["X"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
+            step = 3
+            X_mean = X_mean[::step]
+            X_std = np.stack([v["X"].std(0) for v in name2rollout[name].values()], axis=0).std(0)
+            y_mean = np.stack([v["y"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
+            y_std = np.stack([v["y"].std(0) for v in name2rollout[name].values()], axis=0).std(0)
+            # alpha = (y_mean - y_min) / (y_max - y_min + 1e-6)
+            axes.scatter(X_mean[:, 0], X_mean[:, 1], label=name, alpha=0.5, c=palette[name])
+            if name not in (
+                'Random',
+                'EagleStrategy',
+                'CMAES',
+            ):
+                for s, e in zip(X_mean[:-1], X_mean[1:]):
+                    axes.quiver(
+                        s[0], s[1], e[0]-s[0], e[1]-s[1], alpha=0.5, 
+                        angles='xy', scale_units='xy', scale = 1
+                    )
+            
+        plt.savefig(os.path.join(output_path, "X.pdf"), bbox_inches="tight")
+        plt.clf()
+
     # 1. plot y
     _, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6 * ncols, 4.5 * nrows))
     axes = axes.reshape(-1)
@@ -147,7 +203,7 @@ def plot(name2rollout, datasets, output_path, palette):
     for name in name2rollout:
         axes[-1].plot([], label=name, color=palette[name])
     axes[-1].legend()
-    plt.savefig(os.path.join(output_path, "y.png"))
+    plt.savefig(os.path.join(output_path, "y.pdf"), bbox_inches="tight")
     plt.clf()
     
     # 2. plot normalized y
@@ -171,7 +227,7 @@ def plot(name2rollout, datasets, output_path, palette):
     for name in name2rollout:
         axes[-1].plot([], label=name, color=palette[name])
     axes[-1].legend()
-    plt.savefig(os.path.join(output_path, "normalized_y.png"))
+    plt.savefig(os.path.join(output_path, "normalized_y.pdf"), bbox_inches="tight")
     plt.clf()
     
     # 3. plot regret
@@ -195,29 +251,53 @@ def plot(name2rollout, datasets, output_path, palette):
     for name in name2rollout:
         axes[-1].plot([], label=name, color=palette[name])
     axes[-1].legend()
-    plt.savefig(os.path.join(output_path, "regret.png"))
+    plt.savefig(os.path.join(output_path, "regret.pdf"), bbox_inches="tight")
     plt.clf()
     
     # 4. plot the aggregations
-    _, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 4.5))
-    axes = axes.reshape(-1)
-    axes[0].set_title("Normalized Y")
+    _, axes = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.5))
+    axes.set_title("Normalized Y")
     for name in name2rollout:
         mean = np.stack([v["normalized_y"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
         std = np.stack([v["normalized_y"].std(0) for v in name2rollout[name].values()], axis=0).mean(0)
         step_metric = np.arange(len(mean))
-        axes[0].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
-        axes[0].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
-    axes[1].set_title("Normalized Regret")
+        axes.plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
+        axes.fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
+    # axes.legend()
+    plt.savefig(os.path.join(output_path, "agg_y.pdf"), bbox_inches="tight")
+    plt.clf()
+
+    # 5. plot the regret
+    _, axes = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.5))
+    axes.set_title("Normalized Regret")
     for name in name2rollout:
         mean = np.stack([v["normalized_cumulative_regret"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
         std = np.stack([v["normalized_cumulative_regret"].std(0) for v in name2rollout[name].values()], axis=0).mean(0)
         step_metric = np.arange(len(mean))
-        axes[1].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
-        axes[1].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
-    axes[1].legend()
-    plt.savefig(os.path.join(output_path, "agg.png"))
+        axes.plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
+        axes.fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
+    # axes.legend()
+    plt.savefig(os.path.join(output_path, "agg_regret.pdf"), bbox_inches="tight")
     plt.clf()
+
+    # plot legend
+    labels, colors = list(palette.keys()), list(palette.values())
+    n = len(colors)
+    f = lambda m,c: plt.plot([], [],marker=m, color=c, ls="none")[0]
+    handles = [f("s", colors[i]) for i in range(n)]
+    legend = plt.legend(
+        handles, labels, loc=3, framealpha=1, frameon=False, 
+        ncol=5, bbox_to_anchor=(1,1), columnspacing=1
+    )
+    fig = legend.figure
+    fig.canvas.draw()
+    expand=[-1, -1, 1, 1]
+    bbox = legend.get_window_extent()
+    bbox = bbox.from_extents(*(bbox.extents + np.array(expand)))
+    bbox = bbox.transformed(fig.dpi_scale_trans.inverted())
+
+    fig.savefig(os.path.join(output_path, "legend.pdf"), bbox_inches=bbox)
+
 
     
 #%% 

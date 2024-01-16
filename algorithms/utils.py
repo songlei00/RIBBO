@@ -14,7 +14,7 @@ def get_vector_statistics(v):
     return ret
 
 
-def calculate_metrics(id2y, id2normalized_y, id2onestep_normalized_regret):
+def calculate_metrics(id2y, id2normalized_y, id2onestep_normalized_regret, id2x=None):
     metrics = {}
     
     # best y: max over sequence, average over eval num
@@ -41,6 +41,8 @@ def calculate_metrics(id2y, id2normalized_y, id2onestep_normalized_regret):
     # mean y, mean normalized y
     for id in id2normalized_y:
         trajectory_record[id] = {}
+        if id2x is not None:
+            trajectory_record[id]['X'] = id2x[id].mean(axis=0)
         trajectory_record[id]['y'] = id2y[id].mean(axis=0).reshape(-1)
         trajectory_record[id]['normalized_y'] = id2normalized_y[id].mean(axis=0).reshape(-1)
         trajectory_record[id]['normalized_regret'] = id2onestep_normalized_regret[id].mean(axis=0).reshape(-1)

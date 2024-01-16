@@ -214,7 +214,7 @@ def evaluate_decision_transformer_designer(
 ):
     print(f"evaluating on {datasets} ...")
     designer.eval()
-    id2y, id2normalized_y, id2normalized_onestep_regret = {}, {}, {}
+    id2x, id2y, id2normalized_y, id2normalized_onestep_regret = {}, {}, {}, {}
     if eval_mode == "deterministic":
         deterministic = True
     else:
@@ -224,6 +224,7 @@ def evaluate_decision_transformer_designer(
         problem.reset_task(id)
         designer.reset(eval_episode, init_regret)
         last_x, last_y, last_normalized_y, last_normalized_onestep_regret = None, None, None, None
+        this_x = np.zeros([eval_episode, problem.seq_len, problem.x_dim])
         this_y = np.zeros([eval_episode, problem.seq_len, 1])
         this_normalized_y = np.zeros([eval_episode, problem.seq_len, 1])
         this_normalized_onestep_regret = np.zeros([eval_episode, problem.seq_len, 1])
@@ -243,16 +244,19 @@ def evaluate_decision_transformer_designer(
             last_y = info["raw_y"]
             last_normalized_onestep_regret = info["normalized_onestep_regret"]
 
+            this_x[:, i] = last_x.detach().cpu().numpy()
             this_y[:, i] = last_y.detach().cpu().numpy()
             this_normalized_y[:, i] = last_normalized_y.detach().cpu().numpy()
             this_normalized_onestep_regret[:, i] = last_normalized_onestep_regret.detach().cpu().numpy()
         if eval_mode == "dynamic":
             designer.x_head.logstd_max.data = raw_logstd_max
+
+        id2x[id] = this_x
         id2y[id] = this_y
         id2normalized_y[id] = this_normalized_y
         id2normalized_onestep_regret[id] = this_normalized_onestep_regret
         
-    metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, id2normalized_onestep_regret)
+    metrics, trajectory_record = calculate_metrics(id2y, id2normalized_y, id2normalized_onestep_regret, id2x)
     
     designer.train()
     torch.cuda.empty_cache()
