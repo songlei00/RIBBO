@@ -6,6 +6,7 @@ import wandb
 import random
 import yaml
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from tqdm import trange
@@ -25,6 +26,16 @@ from problems.metabo_synthetic import MetaBOSyntheticMetaProblem
 from problems.real_world_problem import RealWorldMetaProblem
 
 from UtilsRL.exp import parse_args, setup
+
+params = {
+    'lines.linewidth': 1.5,
+    'legend.fontsize': 20,
+    'axes.labelsize': 15,
+    'axes.titlesize': 15,
+    'xtick.labelsize': 12,
+    'ytick.labelsize': 12,
+}
+matplotlib.rcParams.update(params)
 
 #%%    
 
@@ -96,17 +107,6 @@ def add_behavior(behavior_cfgs, problem, datasets):
     return name2rollout          
 
 def plot(name2rollout, datasets, output_path, palette):
-    colors = [
-        'blue', 'green', 'cyan', 'magenta', 'yellow', 'black', 'purple', 'pink', 'brown', 
-        'teal',  'lightblue', 'lime', 'lavender', 'turquoise', 'darkgreen', 'tan', 'salmon', 
-        'gold',  'darkred', 'darkblue',
-    ]
-    i = 0
-    for n in name2rollout.keys():
-        if n not in palette:
-            palette[n] = colors[i]
-            i += 1
-
     print(f"Saving to {output_path}")
     os.makedirs(output_path, exist_ok=True)
     total_num = len(datasets) + 2 # agg + legend
@@ -130,10 +130,9 @@ def plot(name2rollout, datasets, output_path, palette):
             data = name2rollout[name][id]["normalized_regret"]
             name2rollout[name][id]["normalized_cumulative_regret"] = np.flip(np.flip(data, 1).cumsum(axis=1), 1)
             
-    plt.figure(dpi=300)
-
     # plot the path for Branin2
     if args.ckpt_id == 'Branin2':
+        plt.figure(dpi=300)
         fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.5))
         y_min, y_max = 1e9, -1e9
         for name in name2rollout:
@@ -168,11 +167,7 @@ def plot(name2rollout, datasets, output_path, palette):
             y_std = np.stack([v["y"].std(0) for v in name2rollout[name].values()], axis=0).std(0)
             # alpha = (y_mean - y_min) / (y_max - y_min + 1e-6)
             axes.scatter(X_mean[:, 0], X_mean[:, 1], label=name, alpha=0.5, c=palette[name])
-            if name not in (
-                'Random',
-                'EagleStrategy',
-                'CMAES',
-            ):
+            if name.startswith('DT'):
                 for s, e in zip(X_mean[:-1], X_mean[1:]):
                     axes.quiver(
                         s[0], s[1], e[0]-s[0], e[1]-s[1], alpha=0.5, 
@@ -182,122 +177,106 @@ def plot(name2rollout, datasets, output_path, palette):
         plt.savefig(os.path.join(output_path, "X.pdf"), bbox_inches="tight")
         plt.clf()
 
-    # 1. plot y
-    _, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6 * ncols, 4.5 * nrows))
-    axes = axes.reshape(-1)
-    for idx, id in enumerate(datasets):
-        axes[idx].set_title(str(id))
-        for name in name2rollout:
-            mean = name2rollout[name][id]["y"].mean(0)
-            std = name2rollout[name][id]["y"].std(0)
+    def extract_data(name2rollout, key):
+        data = {
+            n: {id: v[key] for id, v in r.items()}
+            for n, r in name2rollout.items()
+        }
+        return data
+
+    def plot_all(data, xlabel, ylabel, title, out_name):
+        _, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6 * ncols, 4.5 * nrows))
+        axes = axes.reshape(-1)
+        for idx, id in enumerate(datasets):
+            axes[idx].set_title(str(id))
+            for name in data:
+                mean = data[name][id].mean(0)
+                std = data[name][id].std(0)
+                step_metric = np.arange(len(mean))
+                axes[idx].plot(step_metric, mean, label=name, alpha=0.9, color=palette[name])
+                axes[idx].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
+        for name in data:
+            axes[-2].set_title('agg')
+            mean = np.stack([v.mean(0) for v in data[name].values()], axis=0).mean(0)
+            std = np.stack([v.std(0) for v in data[name].values()], axis=0).mean(0)
             step_metric = np.arange(len(mean))
-            axes[idx].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
-            axes[idx].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
-    for name in name2rollout:
-        axes[-2].set_title('agg')
-        mean = np.stack([v["y"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
-        std = np.stack([v["y"].std(0) for v in name2rollout[name].values()], axis=0).mean(0)
-        step_metric = np.arange(len(mean))
-        axes[-2].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
-        axes[-2].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
-    for name in name2rollout:
-        axes[-1].plot([], label=name, color=palette[name])
-    axes[-1].legend()
-    plt.savefig(os.path.join(output_path, "y.pdf"), bbox_inches="tight")
-    plt.clf()
+            axes[-2].plot(step_metric, mean, label=name, alpha=0.9, color=palette[name])
+            axes[-2].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
+        for name in data:
+            axes[-1].plot([], label=name, color=palette[name])
+        axes[-1].legend()
+        plt.savefig(os.path.join(output_path, f"{out_name}.pdf"), bbox_inches="tight")
+        plt.clf()
+
+    def plot_agg(data, xlabel, ylabel, title, out_name):
+        _, axes = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.5))
+        axes.set_title(title)
+        for name in data:
+            mean = np.stack([v.mean(0) for v in data[name].values()], axis=0).mean(0)
+            std = np.stack([v.std(0) for v in data[name].values()], axis=0).mean(0)
+            step_metric = np.arange(len(mean))
+
+            # trunc
+            # if args.eval_id == 'GriewankRosenbrock':
+            #     threshold = 0.82
+            #     step_metric = step_metric[mean > threshold]
+            #     std = std[mean > threshold]
+            #     mean = mean[mean > threshold]
+            #     axes.set_ylim(threshold)
+
+            if name in behavior_cfgs:
+                zorder = axes.get_zorder() - 1
+            elif name.startswith('DT'):
+                zorder = axes.get_zorder() + 1
+            else:
+                zorder = axes.get_zorder()
+            axes.plot(step_metric, mean, label=name, alpha=0.9, color=palette[name], zorder=zorder)
+            axes.fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name], zorder=zorder)
+        axes.set_xlabel(xlabel)
+        axes.set_ylabel(ylabel)
+        axes.set_xticks(np.arange(0, args.max_input_seq_len+1, 50))
+        axes.set_xticklabels([str(i) for i in np.arange(0, args.max_input_seq_len+1, 50)])
+        plt.savefig(os.path.join(output_path, f"{out_name}.pdf"), bbox_inches="tight")
+        plt.clf()
+
+    y_data = extract_data(name2rollout, 'y')
+    normalized_y_data = extract_data(name2rollout, 'normalized_y')
+    normalized_regret_data = extract_data(name2rollout, 'normalized_cumulative_regret')
+
+    # 1. plot y
+    plot_all(y_data, None, None, None, 'y')
     
     # 2. plot normalized y
-    _, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6 * ncols, 4.5 * nrows))
-    axes = axes.reshape(-1)
-    for idx, id in enumerate(datasets):
-        axes[idx].set_title(str(id))
-        for name in name2rollout:
-            mean = name2rollout[name][id]["normalized_y"].mean(0)
-            std = name2rollout[name][id]["normalized_y"].std(0)
-            step_metric = np.arange(len(mean))
-            axes[idx].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
-            axes[idx].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
-    for name in name2rollout:
-        axes[-2].set_title('agg')
-        mean = np.stack([v["normalized_y"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
-        std = np.stack([v["normalized_y"].std(0) for v in name2rollout[name].values()], axis=0).mean(0)
-        step_metric = np.arange(len(mean))
-        axes[-2].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
-        axes[-2].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
-    for name in name2rollout:
-        axes[-1].plot([], label=name, color=palette[name])
-    axes[-1].legend()
-    plt.savefig(os.path.join(output_path, "normalized_y.pdf"), bbox_inches="tight")
-    plt.clf()
+    plot_all(normalized_y_data, None, None, None, 'normalized_y')
     
     # 3. plot regret
-    _, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6 * ncols, 4.5 * nrows))
-    axes = axes.reshape(-1)
-    for idx, id in enumerate(datasets):
-        axes[idx].set_title(str(id))
-        for name in name2rollout:
-            mean = name2rollout[name][id]["normalized_cumulative_regret"].mean(0)
-            std = name2rollout[name][id]["normalized_cumulative_regret"].std(0)
-            step_metric = np.arange(len(mean))
-            axes[idx].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
-            axes[idx].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
-    for name in name2rollout:
-        axes[-2].set_title('agg')
-        mean = np.stack([v["normalized_cumulative_regret"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
-        std = np.stack([v["normalized_cumulative_regret"].std(0) for v in name2rollout[name].values()], axis=0).mean(0)
-        step_metric = np.arange(len(mean))
-        axes[-2].plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
-        axes[-2].fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
-    for name in name2rollout:
-        axes[-1].plot([], label=name, color=palette[name])
-    axes[-1].legend()
-    plt.savefig(os.path.join(output_path, "regret.pdf"), bbox_inches="tight")
-    plt.clf()
-    
+    plot_all(normalized_regret_data, None, None, None, 'regret')
+
     # 4. plot the aggregations
-    _, axes = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.5))
-    axes.set_title("Normalized Y")
-    for name in name2rollout:
-        mean = np.stack([v["normalized_y"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
-        std = np.stack([v["normalized_y"].std(0) for v in name2rollout[name].values()], axis=0).mean(0)
-        step_metric = np.arange(len(mean))
-        axes.plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
-        axes.fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
-    # axes.legend()
-    plt.savefig(os.path.join(output_path, "agg_y.pdf"), bbox_inches="tight")
-    plt.clf()
-
-    # 5. plot the regret
-    _, axes = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.5))
-    axes.set_title("Normalized Regret")
-    for name in name2rollout:
-        mean = np.stack([v["normalized_cumulative_regret"].mean(0) for v in name2rollout[name].values()], axis=0).mean(0)
-        std = np.stack([v["normalized_cumulative_regret"].std(0) for v in name2rollout[name].values()], axis=0).mean(0)
-        step_metric = np.arange(len(mean))
-        axes.plot(step_metric, mean, label=name, alpha=0.9, linewidth=1.5, color=palette[name])
-        axes.fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name])
-    # axes.legend()
-    plt.savefig(os.path.join(output_path, "agg_regret.pdf"), bbox_inches="tight")
-    plt.clf()
-
-    # plot legend
-    labels, colors = list(palette.keys()), list(palette.values())
-    n = len(colors)
-    f = lambda m,c: plt.plot([], [],marker=m, color=c, ls="none")[0]
-    handles = [f("s", colors[i]) for i in range(n)]
-    legend = plt.legend(
-        handles, labels, loc=3, framealpha=1, frameon=False, 
-        ncol=5, bbox_to_anchor=(1,1), columnspacing=1
+    plot_agg(
+        normalized_y_data, 'Number of evaluations', 'Normalized value',
+        args.eval_id, 'agg_normalized_y',
     )
-    fig = legend.figure
-    fig.canvas.draw()
-    expand=[-1, -1, 1, 1]
-    bbox = legend.get_window_extent()
-    bbox = bbox.from_extents(*(bbox.extents + np.array(expand)))
-    bbox = bbox.transformed(fig.dpi_scale_trans.inverted())
-
-    fig.savefig(os.path.join(output_path, "legend.pdf"), bbox_inches=bbox)
-
+ 
+    # 5. plot the best aggregations
+    best_value = dict()
+    for name in name2rollout:
+        best_value[name] = dict()
+        for id in name2rollout[name]:
+            best_normalized_y = np.zeros_like(normalized_y_data[name][id])
+            for i in range(best_normalized_y.shape[1]):
+                best_normalized_y[:, i] = np.max(normalized_y_data[name][id][:, :i+1], axis=1)
+            best_value[name][id] = best_normalized_y
+    plot_agg(
+        best_value, 'Number of evaluations', 'Normalized value',
+        args.eval_id, 'agg_best_normalized_y',
+    )
+            
+    # 6. plot the regret
+    plot_agg(
+        normalized_regret_data, 'Number of evaluations', 'Cumulative regret',
+        'Normalized regret', 'agg_regret',
+    )
 
     
 #%% 
@@ -386,6 +365,59 @@ def load_model(problem, ckpt_cfgs):
         ckpts[name] = designers
     return ckpts
 
+
+def merge_palette(name2rollout, palette):
+    COLORS = [
+        'blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black',
+        'purple', 'pink', 'brown', 'orange', 'teal',  'lightblue', 'lime',
+        'lavender', 'turquoise', 'darkgreen', 'tan', 'salmon', 'gold',
+        'darkred', 'darkblue'
+    ]
+    # assign color for unassigned algorithm
+    for n in name2rollout.keys():
+        if n in palette:
+            continue
+        # assign unused color
+        colors = list(palette.values())
+        for c in COLORS:
+            if c not in colors:
+                palette[n] = c
+                break
+    return palette
+
+def plot_legend(output_path, palette, n_col=5):
+    print(f"Saving legend to {output_path}")
+    os.makedirs(output_path, exist_ok=True)
+
+    labels, colors = list(palette.keys()), list(palette.values())
+    colors = [c if isinstance(c, str) else tuple([i/255 for i in c]) for c in colors]
+    n = len(colors)
+    f = lambda m, c: plt.plot([], [], marker=m, color=c, ls="none")[0]
+    handles = [f("s", colors[i]) for i in range(n)]
+
+    def reorder(h, l, nc):
+        new_h, new_l = [], []
+        for row_i in range(nc):
+            for col_i in range(int(np.ceil(len(h) / nc))):
+                idx = col_i * nc + row_i
+                if idx < len(h):
+                    new_h.append(h[idx])
+                    new_l.append(l[idx])
+        return new_h, new_l
+
+    handles, labels = reorder(handles, labels, n_col)
+    legend = plt.legend(
+        handles, labels, loc=3, framealpha=1, frameon=False, 
+        ncol=n_col, bbox_to_anchor=(1,1), columnspacing=1
+    )
+    fig = legend.figure
+    fig.canvas.draw()
+    expand=[-1, -1, 1, 1]
+    bbox = legend.get_window_extent()
+    bbox = bbox.from_extents(*(bbox.extents + np.array(expand)))
+    bbox = bbox.transformed(fig.dpi_scale_trans.inverted())
+
+    fig.savefig(os.path.join(output_path, "legend.pdf"), bbox_inches=bbox)
     
 # ckpt_cfgs = {
 #     "DT": {
@@ -416,8 +448,9 @@ with open(f'scripts/ckpt_configs/{args.problem}/{args.ckpt_id}.yaml', 'r') as f:
             curr_path = [
                 f'log/{args.problem}/{p}/ckpt/{epoch}.ckpt' for p in path
             ]
-            cfg[name + '_' + str(epoch)] = dict(load_dict[name])
-            cfg[name + '_' + str(epoch)]['path'] = curr_path
+            key = name if len(epochs) == 1 else name + '_' + str(epoch)
+            cfg[key] = dict(load_dict[name])
+            cfg[key]['path'] = curr_path
         ckpt_cfgs.update(cfg)
         
 print('===== ckpt configs =====')
@@ -438,13 +471,19 @@ behavior_cfgs = {
 }
 
 palette = {
-    'Random': 'violet',
-    'ShuffledGridSearch': 'slategray',
+    # 'BC': 'turquoise',
+    'DT': 'blue',
+    'BC-filter': 'orange',
+    'Opt-Eagle': 'lime',
+
+    # behavior
+    # 'Random': 'violet',
+    # 'ShuffledGridSearch': 'salmon',
     'CMAES': 'darkviolet',
-    'EagleStrategy': 'royalblue',
-    'HillClimbing': 'mediumseagreen',
-    'RegularizedEvolution': 'orange',
-    'BotorchBO': 'red',
+    'EagleStrategy': 'gold',
+    'HillClimbing': 'slategray',
+    'RegularizedEvolution': 'teal',
+    'BotorchBO': 'brown',
 }
 
 for mode, problem in problem_dict.items():
@@ -455,7 +494,6 @@ for mode, problem in problem_dict.items():
         rollout_datasets = args.validation_datasets
     else: # test
         rollout_datasets = args.test_datasets
-    # rollout_datasets = ["145833", "3891"]
     name2rollout = defaultdict(dict)
     name2rollout.update(add_behavior(behavior_cfgs, problem, rollout_datasets))
     for name in ckpt_cfgs:
@@ -467,15 +505,12 @@ for mode, problem in problem_dict.items():
             )
         name2rollout[name] = rollout_res
 
-    # if model_type == 'bc':
-        # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}")
-    # elif model_type == 'optformer':
-        # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}-{algo}")
-    # elif model_type == 'dt':
-        # plot(name2rollout, rollout_datasets, output_path=f"./plot/tune/{args.id}/{dir_name}-{init_regret}-{regret_strategy}-dyna")
+    output_path=f"./plot/rollout/{args.problem}/{args.ckpt_id}-{args.eval_id}/{mode}/"
+    palette = merge_palette(name2rollout, palette)
+    plot_legend(output_path, palette)
     plot(
         name2rollout,
         rollout_datasets,
-        output_path=f"./plot/rollout/{args.problem}/{args.ckpt_id}-{args.eval_id}/{mode}/",
+        output_path=output_path,
         palette=palette,
     )

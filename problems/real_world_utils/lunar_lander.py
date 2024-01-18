@@ -887,21 +887,27 @@ class LunarLanderProblem(BaseTestProblem):
 
     def evaluate_true(self, X):
         X = X * (self._ub - self._lb) + self._lb
-        n_envs = 10
-        # params = []
-        # for x in X:
-        #     for env_seed in range(n_envs):
-        #         params.append((x.cpu(), env_seed))
-        # with Pool(min(n_envs, 16)) as p:
-        #     reward = p.map(simulate_lunar_rover, params)
-        reward = []
+        n_envs = 5
+
+        # parallel
+        params = []
         for x in X:
-            x_reward = []
             for env_seed in range(n_envs):
-                r = simulate_lunar_rover((x.cpu(), env_seed))
-                x_reward.append(r)
-            reward.append(np.mean(x_reward))
-        reward = torch.tensor(reward).view(-1, 1) 
+                params.append((x.cpu(), env_seed))
+        with Pool(min(n_envs, 16)) as p:
+            reward = p.map(simulate_lunar_rover, params)
+        reward = torch.tensor(reward).view(-1, n_envs) 
+        reward = reward.mean(1) 
+
+        # sequence
+        # reward = []
+        # for x in X:
+        #     x_reward = []
+        #     for env_seed in range(n_envs):
+        #         r = simulate_lunar_rover((x.cpu(), env_seed))
+        #         x_reward.append(r)
+        #     reward.append(np.mean(x_reward))
+        # reward = torch.tensor(reward).view(-1, -1) 
         return reward.to(X)
 
 
