@@ -107,8 +107,9 @@ def extract_data(name2rollout, key):
 
 def post_init(args):
     args.train_datasets = args.train_datasets[args.eval_id][:30]
-    args.test_datasets = args.test_datasets[args.eval_id][:15]
-    args.eval_episodes = 20
+    args.validation_datasets = args.validation_datasets[args.eval_id]
+    args.test_datasets = args.test_datasets[args.eval_id]
+    args.eval_episodes = 5
     args.deterministic_eval = False
     args.problem_cls = {
         "hpob": HPOBMetaProblem, 
@@ -123,7 +124,7 @@ setup(args, _seed=0)
 # define the problem and the dataset
 problem_dict = dict()
 # for mode in ('train', 'test', 'validation'):
-for mode in ('train', 'test'):
+for mode in ('train', ):
     if mode == 'train':
         data_dir = args.data_dir
         cache_dir = args.cache_dir

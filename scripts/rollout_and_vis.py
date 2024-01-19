@@ -282,8 +282,9 @@ def plot(name2rollout, datasets, output_path, palette):
 #%% 
 
 def post_init(args):
-    args.train_datasets = args.train_datasets[args.eval_id][:50]
-    args.test_datasets = args.test_datasets[args.eval_id][:15]
+    args.train_datasets = args.train_datasets[args.eval_id][:30]
+    args.validation_datasets = args.validation_datasets[args.eval_id]
+    args.test_datasets = args.test_datasets[args.eval_id]
     args.eval_episodes = 5
     args.deterministic_eval = False
     args.problem_cls = {

@@ -64,4 +64,5 @@ class optformer_config(NameSpace):
 from scripts.configs.dataset_specs_metabo_synthetic import (
     train_datasets, 
     test_datasets, 
+    validation_datasets,
 )
