@@ -3,6 +3,7 @@ import pickle
 from typing import List, Optional, Union
 from collections import defaultdict
 
+from tqdm import trange
 import torch
 import numpy as np
 from typing import List, Optional
@@ -11,13 +12,8 @@ from torch.utils.data import Dataset, IterableDataset
 from datasets.trajectory import Trajectory
 from datasets.metrics import metric_regret
 from datasets.load_datasets import load_trajectory_dataset
-from algorithms.data_filter import (
-    filter_designer, 
-    filter_dataset, 
-    map_smally,
-    rule_based_filter_dataset,
-)
-from data_augment.operators import augment_transform
+from algorithms.data_filter import filter_designer
+from data_augment.operators import operator_list
 
 
 class TrajectoryDataset():
@@ -76,12 +72,15 @@ class TrajectoryDataset():
 
         if augment:
             augment_trajectory_list = []
-            for filter_fn, transform, ratio in augment_transform:
-                feasible_trajectory = list(filter(filter_fn, self.trajectory_list))
-                augment_num = int(ratio * len(feasible_trajectory))
-                idx = np.random.choice(len(feasible_trajectory), augment_num, replace=False)
-                augment_t = list(map(transform, [feasible_trajectory[i] for i in idx]))
-                augment_trajectory_list.extend(augment_t)
+            augment_ratio = 1
+            augment_num = int(augment_ratio * len(self.trajectory_list))
+            idx = np.random.choice(len(self.trajectory_list), augment_num, replace=True)
+            for i in trange(idx):
+                t = self.trajectory_list[i]
+                op_i = np.random.choice(len(operator_list), 1, replace=False)
+                op = operator_list[op_i]
+                augment_t = op(t)
+                augment_trajectory_list.append(augment_t)
 
             self.trajectory_list += augment_trajectory_list
             print('After augmentation, len: {}'.format(len(self.trajectory_list)))

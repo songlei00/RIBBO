@@ -29,11 +29,11 @@ from UtilsRL.exp import parse_args, setup
 
 params = {
     'lines.linewidth': 1.5,
-    'legend.fontsize': 20,
-    'axes.labelsize': 15,
-    'axes.titlesize': 15,
-    'xtick.labelsize': 12,
-    'ytick.labelsize': 12,
+    'legend.fontsize': 16,
+    'axes.labelsize': 20,
+    'axes.titlesize': 20,
+    'xtick.labelsize': 17,
+    'ytick.labelsize': 17,
 }
 matplotlib.rcParams.update(params)
 
@@ -128,7 +128,8 @@ def plot(name2rollout, datasets, output_path, palette):
     for name in name2rollout:
         for id in datasets:
             data = name2rollout[name][id]["normalized_regret"]
-            name2rollout[name][id]["normalized_cumulative_regret"] = np.flip(np.flip(data, 1).cumsum(axis=1), 1)
+            name2rollout[name][id]["normalized_rtg"] = np.flip(np.flip(data, 1).cumsum(axis=1), 1)
+            name2rollout[name][id]["normalized_cumulative_regret"] = data.cumsum(axis=1)
             
     # plot the path for Branin2
     if args.ckpt_id == 'Branin2':
@@ -174,6 +175,7 @@ def plot(name2rollout, datasets, output_path, palette):
                         angles='xy', scale_units='xy', scale = 1
                     )
             
+        axes.set_title('Branin')
         plt.savefig(os.path.join(output_path, "X.pdf"), bbox_inches="tight")
         plt.clf()
 
@@ -210,19 +212,42 @@ def plot(name2rollout, datasets, output_path, palette):
 
     def plot_agg(data, xlabel, ylabel, title, out_name):
         _, axes = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.5))
+        if title == '5527':
+            title = 'SVM'
+        elif title == '6767':
+            title = 'XGBoost'
         axes.set_title(title)
         for name in data:
             mean = np.stack([v.mean(0) for v in data[name].values()], axis=0).mean(0)
             std = np.stack([v.std(0) for v in data[name].values()], axis=0).mean(0)
             step_metric = np.arange(len(mean))
 
-            # trunc
-            # if args.eval_id == 'GriewankRosenbrock':
-            #     threshold = 0.82
-            #     step_metric = step_metric[mean > threshold]
-            #     std = std[mean > threshold]
-            #     mean = mean[mean > threshold]
-            #     axes.set_ylim(threshold)
+            # if out_name == 'agg_best_normalized_y':
+                # main exp
+                # if args.eval_id == 'GriewankRosenbrock':
+                #     axes.set_ylim(0.90, 1.005)
+                # elif args.eval_id == 'Lunacek':
+                #     axes.set_ylim(0.70, 1.01)
+                # elif args.eval_id == 'Rastrigin':
+                #     axes.set_ylim(0.90, 1.005)
+                # elif args.eval_id == 'RosenbrockRotated':
+                #     axes.set_ylim(0.92, 1.005)
+                # elif args.eval_id == 'SharpRidge':
+                #     axes.set_ylim(0.60, 1.01)
+                
+                # for ablation
+                # if args.eval_id == 'GriewankRosenbrock':
+                #     axes.set_ylim(0.92, 1.002) # for regret strategy
+                #     axes.set_ylim(0.96, 1.002) # for regret strategy
+                #     # axes.set_ylim(0.80, 1.002)
+                # elif args.eval_id == 'Lunacek':
+                #     axes.set_ylim(0.80, 1.02)
+                # elif args.eval_id == 'Rastrigin':
+                #     axes.set_ylim(0.96, 1.005)
+                # elif args.eval_id == 'RosenbrockRotated':
+                #     axes.set_ylim(0.99, 1.005)
+                # elif args.eval_id == 'SharpRidge':
+                #     axes.set_ylim(0.60, 1.01)
 
             if name in behavior_cfgs:
                 zorder = axes.get_zorder() - 1
@@ -230,33 +255,45 @@ def plot(name2rollout, datasets, output_path, palette):
                 zorder = axes.get_zorder() + 1
             else:
                 zorder = axes.get_zorder()
-            axes.plot(step_metric, mean, label=name, alpha=0.9, color=palette[name], zorder=zorder)
-            axes.fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name], zorder=zorder)
+
+            # axes.plot(step_metric, mean, label=name, alpha=0.9, color=palette[name], zorder=zorder)
+            # axes.fill_between(step_metric, mean-std, mean+std, alpha=0.2, color=palette[name], zorder=zorder)
+
+            axes.errorbar(step_metric, mean, std, errorevery=int(len(mean) / 8), c=palette[name], zorder=zorder, label=name)
         axes.set_xlabel(xlabel)
         axes.set_ylabel(ylabel)
         axes.set_xticks(np.arange(0, args.max_input_seq_len+1, 50))
         axes.set_xticklabels([str(i) for i in np.arange(0, args.max_input_seq_len+1, 50)])
+        # axes.legend(loc=1)
+        # axes.legend(loc=4)
         plt.savefig(os.path.join(output_path, f"{out_name}.pdf"), bbox_inches="tight")
         plt.clf()
 
     y_data = extract_data(name2rollout, 'y')
     normalized_y_data = extract_data(name2rollout, 'normalized_y')
     normalized_regret_data = extract_data(name2rollout, 'normalized_cumulative_regret')
+    normalized_rtg_data = extract_data(name2rollout, 'normalized_rtg')
 
     # 1. plot y
-    plot_all(y_data, None, None, None, 'y')
+    # plot_all(y_data, None, None, None, 'y')
     
     # 2. plot normalized y
-    plot_all(normalized_y_data, None, None, None, 'normalized_y')
+    # plot_all(normalized_y_data, None, None, None, 'normalized_y')
     
     # 3. plot regret
-    plot_all(normalized_regret_data, None, None, None, 'regret')
+    # plot_all(normalized_regret_data, None, None, None, 'regret')
 
     # 4. plot the aggregations
     plot_agg(
         normalized_y_data, 'Number of evaluations', 'Normalized value',
         args.eval_id, 'agg_normalized_y',
     )
+
+    # ablation
+    # plot_agg(
+    #     normalized_y_data, 'Number of evaluations', 'Normalized value',
+    #     args.eval_id, 'agg_normalized_y',
+    # )
  
     # 5. plot the best aggregations
     best_value = dict()
@@ -278,12 +315,18 @@ def plot(name2rollout, datasets, output_path, palette):
         'Normalized regret', 'agg_regret',
     )
 
+    # 7. 
+    plot_agg(
+        normalized_rtg_data, 'Number of evaluations', 'Regret-to-go',
+        args.eval_id, 'agg_rtg_regret',
+    )
+
     
 #%% 
 
 def post_init(args):
     args.train_datasets = args.train_datasets[args.eval_id][:30]
-    args.validation_datasets = args.validation_datasets[args.eval_id]
+    # args.validation_datasets = args.validation_datasets[args.eval_id]
     args.test_datasets = args.test_datasets[args.eval_id]
     args.eval_episodes = 5
     args.deterministic_eval = False
@@ -300,7 +343,8 @@ setup(args, _seed=0)
 # define the problem and the dataset
 problem_dict = dict()
 # for mode in ('train', 'test', 'validation'):
-for mode in ('train', 'test'):
+# for mode in ('train', 'test'):
+for mode in ('test', ):
     if mode == 'train':
         data_dir = args.data_dir
         cache_dir = args.cache_dir
@@ -320,7 +364,7 @@ for mode in ('train', 'test'):
             normalize_method='random', # does not matter here 
             scale_clip_range=None, # does not matter here
             prioritize=False, # does not matter here
-            n_block=1,
+            n_block=5,
         )
         problem_dict[mode] = problem
 
@@ -391,7 +435,6 @@ def plot_legend(output_path, palette, n_col=5):
     os.makedirs(output_path, exist_ok=True)
 
     labels, colors = list(palette.keys()), list(palette.values())
-    colors = [c if isinstance(c, str) else tuple([i/255 for i in c]) for c in colors]
     n = len(colors)
     f = lambda m, c: plt.plot([], [], marker=m, color=c, ls="none")[0]
     handles = [f("s", colors[i]) for i in range(n)]
@@ -435,6 +478,115 @@ def plot_legend(output_path, palette, n_col=5):
 #     }
 # }
 
+behavior_cfgs = {
+    # "add_behavior": True, 
+    "add_behavior": True, 
+    "num": 25, 
+    "Random": False, 
+    "ShuffledGridSearch": False,
+    "CMAES": True, 
+    "EagleStrategy": True, 
+    "HillClimbing": True, 
+    "RegularizedEvolution": True, 
+    "BotorchBO": True, 
+}
+
+palette = {
+    'DT': 'crimson',
+    'BC': (171, 197, 231),
+    'BC-filter': 'royalblue',
+    'Opt-Eagle': (0, 190, 190),
+
+    # behavior
+    'Random': 'gray',
+    'ShuffledGridSearch': 'blueviolet',
+    'HillClimbing': (141, 84, 71),
+    'RegularizedEvolution': (124, 136, 6),
+    'EagleStrategy': (255, 153, 51),
+    'CMAES': (71, 71, 71),
+    'BotorchBO': (216, 207, 22),
+
+    # algorithm selection
+    'DT-regret0': 'crimson',
+    'DT-regret5': (255, 153, 51),
+    'DT-regret10': 'royalblue',
+    # 'DT-regret20': 'blueviolet',
+    # 'DT-regret30': 'limegreen',
+
+    # input seq len
+    'DT-len50': 'crimson',
+    'DT-len25': (255, 153, 51),
+    'DT-len100': 'royalblue',
+    'DT-len150': 'blueviolet',
+
+    # mix method
+    'DT-concat': 'crimson',
+    'DT-add': (255, 153, 51),
+    'DT-interleave': 'royalblue',
+
+    # model arch
+    'DT-mid': 'crimson',
+    'DT-small': (255, 153, 51),
+    'DT-large': 'royalblue',
+
+    # normalize method
+    'DT-random': 'crimson',
+    'DT-dataset': (255, 153, 51),
+    'DT-none': 'royalblue',
+
+    # regret strategy
+    'DT-relabel': 'crimson',
+    'DT-none-0': (255, 153, 51),
+    'DT-none-5': 'royalblue',
+    # 'DT-clip': 'blueviolet',
+
+    # x_type
+    'DT-stochastic': 'crimson',
+    'DT-deterministic': (255, 153, 51),
+}
+
+key_map = {
+    # regret strategy
+    'DT-relabel': 'HRR ($R_0$=0)',
+    'DT-none-0': 'Naive ($R_0$=0)',
+    'DT-none-5': 'Naive ($R_0$=5)',
+
+    # algorithm selection
+    'DT-regret0': 'HRR ($R_0$=0)',
+    'DT-regret5': 'HRR ($R_0$=5)',
+    'DT-regret10': 'HRR ($R_0$=10)',
+    'DT-regret20': 'HRR ($R_0$=20)',
+
+    # input seq len
+    'DT-len50': '$\\tau$=50',
+    'DT-len25': '$\\tau$=25',
+    'DT-len100': '$\\tau$=100',
+    'DT-len150': '$\\tau$=150',
+
+    # mix method
+    'DT-concat': 'Concat',
+    'DT-add': 'Add',
+    'DT-interleave': 'Interleave', 
+
+    # model arch
+    'DT-mid': 'Mid',
+    'DT-small': 'Small',
+    'DT-large': 'Large',
+
+    # normalize method
+    'DT-random': 'Random',
+    'DT-dataset': 'Dataset',
+    'DT-none': 'None',
+}
+
+for k in key_map:
+    if k in palette:
+        palette[key_map[k]] = palette.pop(k)
+
+for k, v in palette.items():
+    if not isinstance(v, str):
+        palette[k] = tuple([i / 255 for i in v])
+
 ckpt_cfgs = dict()
 with open(f'scripts/ckpt_configs/{args.problem}/{args.ckpt_id}.yaml', 'r') as f:
     load_dict = yaml.safe_load(f)
@@ -450,6 +602,7 @@ with open(f'scripts/ckpt_configs/{args.problem}/{args.ckpt_id}.yaml', 'r') as f:
                 f'log/{args.problem}/{p}/ckpt/{epoch}.ckpt' for p in path
             ]
             key = name if len(epochs) == 1 else name + '_' + str(epoch)
+            key = key_map[key] if key in key_map else key
             cfg[key] = dict(load_dict[name])
             cfg[key]['path'] = curr_path
         ckpt_cfgs.update(cfg)
@@ -458,34 +611,6 @@ print('===== ckpt configs =====')
 for k, v in ckpt_cfgs.items():
     print(k, v)
 print('========================')
-
-behavior_cfgs = {
-    "add_behavior": True, 
-    "num": 5, 
-    "Random": False, 
-    "ShuffledGridSearch": False,
-    "CMAES": True, 
-    "EagleStrategy": True, 
-    "HillClimbing": True, 
-    "RegularizedEvolution": True, 
-    "BotorchBO": True, 
-}
-
-palette = {
-    # 'BC': 'turquoise',
-    'DT': 'blue',
-    'BC-filter': 'orange',
-    'Opt-Eagle': 'lime',
-
-    # behavior
-    # 'Random': 'violet',
-    # 'ShuffledGridSearch': 'salmon',
-    'CMAES': 'darkviolet',
-    'EagleStrategy': 'gold',
-    'HillClimbing': 'slategray',
-    'RegularizedEvolution': 'teal',
-    'BotorchBO': 'brown',
-}
 
 for mode, problem in problem_dict.items():
     ckpts = load_model(problem, ckpt_cfgs)
@@ -504,7 +629,19 @@ for mode, problem in problem_dict.items():
             rollout_res.append(
                 rollout_designer(problem, designer, rollout_datasets, args.eval_episodes, **rollout_args)
             )
-        name2rollout[name] = rollout_res
+
+        # cat rollout
+        rollout_dict = dict()
+        for res in rollout_res:
+            for id in res:
+                if id not in rollout_dict:
+                    rollout_dict[id] = dict()
+                for key in res[id]:
+                    if key not in rollout_dict[id]:
+                        rollout_dict[id][key] = res[id][key]
+                    else:
+                        rollout_dict[id][key] = np.concatenate([rollout_dict[id][key], res[id][key]])
+        name2rollout[name] = rollout_dict
 
     output_path=f"./plot/rollout/{args.problem}/{args.ckpt_id}-{args.eval_id}/{mode}/"
     palette = merge_palette(name2rollout, palette)

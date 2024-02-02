@@ -23,7 +23,7 @@ def random_delete(trajectory, num_delete) -> Tuple[Trajectory, List]:
     return delete_by_idx(trajectory, delete_idx)
 
 
-def keep_topk_delete(trajectory, num_delete, k):
+def keep_topk_delete(trajectory, trajectory_list, num_delete, k):
     """
     Delete some (x, y) pairs from the trajectory and keep the best topk
     """
@@ -34,7 +34,7 @@ def keep_topk_delete(trajectory, num_delete, k):
     return delete_by_idx(trajectory, delete_idx)
 
 
-def duplicate_delete(trajectory, num_delete):
+def duplicate_delete(trajectory, trajectory_list, num_delete):
     """
     Delete `num_delete` pairs from the most similar X
     """
@@ -76,7 +76,7 @@ def optimization(trajectory):
     pass
 
 
-def get_increasing_subtrajectory(trajectory, increasing=True):
+def get_increasing_subtrajectory(trajectory, trajectory_list, increasing=True):
     y = trajectory.y
     increasing_idx_y_pair = sorted(zip(range(len(y)), y), key=lambda x: x[1])
     sample_idx = list(range(0, len(y), 2))
@@ -98,7 +98,8 @@ def get_increasing_subtrajectory(trajectory, increasing=True):
     curr_t = Trajectory(metadata, curr_X, curr_y)
     return curr_t
 
-
-augment_transform = (
-    (lambda t: True, partial(get_increasing_subtrajectory, increasing=False), 0.25),
+operator_list = (
+    partial(keep_topk_delete, num_delete=50, k=50),
+    partial(duplicate_delete, num_delete=50),
+    partial(get_increasing_subtrajectory, increasing=True),
 )

@@ -131,7 +131,7 @@ class DecisionTransformerDesigner(BaseDesigner):
                 self.past_regrets[:, self.step_count+1] = self.past_regrets[:, self.step_count] - last_onestep_regret
                 self.past_regrets[:, :self.step_count+2] -= neg_diff.unsqueeze(1)
             self.step_count += 1
-        
+
         x_pred, *_ = self.transformer(
             x=self.past_x[:, :self.step_count+1][:, -self.input_seq_len:], 
             y=self.past_y[:, :self.step_count+1][:, -self.input_seq_len:], 

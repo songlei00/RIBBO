@@ -64,5 +64,5 @@ class optformer_config(NameSpace):
 from scripts.configs.dataset_specs_hpob import (
     train_datasets, 
     test_datasets, 
-    validation_datasets,
+    # validation_datasets,
 )
