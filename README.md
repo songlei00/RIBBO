@@ -23,3 +23,7 @@ This repository contains the Python code for RIBBO, described in Reinforced In-C
 ## Usage
 
 Run ```bash scripts/run_main.sh``` to evaluate RIBBO and other baselines
+
+## Datasets
+
+The datasets are not released during the review stage, but we provided detailed guidlines in our paper and the code for data generation. We will open-source the datasets and code after the final decision
