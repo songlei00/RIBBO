@@ -1,6 +1,6 @@
 # Reinforced In-Context Black-Box Optimization
 
-This repository contains the Python code for RIBBO, described in Reinforced In-Context Black-Box Optimization, a method to reinforce-learn a BBO algorithm from offline data in an end-to-end fashion
+This repository contains the Python code for [*Reinforced In-Context Black-Box Optimization (RIBBO)*](https://arxiv.org/abs/2402.17423), a method to reinforce-learn a BBO algorithm from offline data in an end-to-end fashion.
 
 ## Requirements
 
@@ -26,4 +26,4 @@ Run ```bash scripts/run_main.sh``` to evaluate RIBBO and other baselines
 
 ## Datasets
 
-The datasets are not released during the review stage, but we provided detailed guidlines in our paper and the code for data generation. We will open-source the datasets and code after the final decision
+The datasets were not released during the review stage, but we provided detailed guidelines in our paper and the code for data generation. We will open-source the datasets and code after the final decision
